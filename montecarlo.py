@@ -4,9 +4,16 @@ import numpy as np
 from actin import *
 
 # choose initial configuration to be along z-axis
+<<<<<<< HEAD
 dx = 0.5
 L =  100
 MC_steps = int(1e5)
+=======
+#dx = 0.002
+dx = 0.1
+L =  20
+nsteps = int(1e5)
+>>>>>>> a13f8a5f2313dc06b906cfd9971d6332fd20f398
 N = int(L/dx) + 1
 data_file = open('output.dat','w')
 
@@ -17,7 +24,7 @@ A = [ actin_filament(positions[i],dx) for i in range(N) ]
 # write initial config to file
 write(A,0,data_file)
 
-for j in range(1,MC_steps+1):
+for j in range(1,nsteps+1):
 
     random_vec = np.random.randn(3)
 

@@ -2,3 +2,7 @@ output.dat
 figure_1.png 
 *.png 
 *.dat 
+
+output.dat
+
+*.png

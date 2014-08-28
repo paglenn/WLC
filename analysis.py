@@ -1,9 +1,10 @@
 import numpy as np
 infile = open('output.dat','r')
 
-num_actins = 101
 num_steps = int(1e5)
 dx = 0.1
+L = 100
+num_actins = int(L/dx)  + 1
 
 trajectory = [ list() for x in range(num_steps+1) ]
 step = -1
@@ -30,7 +31,7 @@ def plot_distribution():
             cos.append( np.dot(filament[i],filament[i+1]) )
 
     plt.hist(cos,bins=100,range=(-1,1),normed=True,histtype='step')
-    x = np.linspace(-1,1,1000)
+    x = np.linspace(-1,1,100)
     P = 1./dx * np.exp(x/dx) / (2*np.sinh(1./dx) )
     plt.plot(x,P,'k',lw=1.2)
     plt.xlabel(r'$\cos \theta $')
@@ -39,8 +40,8 @@ def plot_distribution():
     plt.show()
 
 # compute correlator
-def plot_correlator():
-    R = range(0,30)
+def plot_correlator(mode='normal'):
+    R = range(0,20)
     G = [0 for r in R ]
     num_samples = list(G)
     for filament in trajectory[1:]:
@@ -61,26 +62,29 @@ def plot_correlator():
     R = [dx * r for r in R ]
     R = np.array(R)
     G = np.array(G)
-    #plt.plot(np.array(R),G,'b.')
-    plt.semilogy(np.array(R),G,'b.')
+
 
     # model prediction: G(s) ~ exp(-s/l_p)
     expR = np.exp(-R)
-    #plt.plot(R, expR,'k',lw=1.5 )
-    plt.semilogy(R, expR,'k',lw=1.5 )
+    if mode == 'normal':
+        plt.plot(np.array(R),G,'b.')
+        plt.plot(R, expR,'k',lw=1.5 )
+        plt.savefig('correlator.png')
+    elif mode == 'log':
+        plt.semilogy(np.array(R),G,'b.')
+        plt.semilogy(R, expR,'k',lw=1.5 )
+        plt.savefig('correlator_log.png')
+
     plt.xlabel(r's/$l_p$')
     plt.ylabel('G(s)')
-    #plt.savefig('correlator.png')
-    plt.savefig('correlator_log.png')
     plt.show()
 
+def free_energy():
+    Ld = num_actins - 1
+    FE = - Ld * (1./dx) * np.log(np.sinh(1./dx) )
+    return FE
+
+#plot_distribution()
 plot_correlator()
-
-
-
-
-
-
-
-
+#plot_correlator('log')
 
