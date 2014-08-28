@@ -4,8 +4,8 @@ import numpy as np
 from actin import *
 
 # choose initial configuration to be along z-axis
-dx = 0.1
-L =  10
+dx = 0.5
+L =  100
 MC_steps = int(1e5)
 N = int(L/dx) + 1
 data_file = open('output.dat','w')
