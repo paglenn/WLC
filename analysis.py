@@ -1,9 +1,10 @@
 import numpy as np
 infile = open('output.dat','r')
 
-num_actins = 201
 num_steps = int(1e5)
 dx = 0.1
+L = 100
+num_actins = int(L/dx)  + 1
 
 trajectory = [ list() for x in range(num_steps+1) ]
 step = -1
@@ -77,6 +78,11 @@ def plot_correlator(mode='normal'):
     plt.xlabel(r's/$l_p$')
     plt.ylabel('G(s)')
     plt.show()
+
+def free_energy():
+    Ld = num_actins - 1
+    FE = - Ld * (1./dx) * np.log(np.sinh(1./dx) )
+    return FE
 
 #plot_distribution()
 plot_correlator()
