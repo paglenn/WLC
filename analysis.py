@@ -33,12 +33,15 @@ def calculate_displacement():
     for i in range(len(final_filament)):
         scalar_projection = np.dot(final_filament[i],init_filament[i])/np.linalg.norm(init_filament[i])**2.
         dR = final_filament[i] - scalar_projection*init_filament[i]
-        dR = dR / np.linalg.norm(dR)
+        if np.linalg.norm(dR) > 0:
+            dR = dR / np.linalg.norm(dR)
         R += dR * dx
 
         T += final_filament[i]
 
-    Tn = T / np.linalg.norm(T)
+    if np.linalg.norm(T) < 0 :
+        Tn = T / np.linalg.norm(T)
+    else: Tn = T
     return Tn, R
 
 # calculate net difference in tangent vectors
@@ -68,6 +71,7 @@ def plottable(filament):
         Z.append(z)
     return X,Y,Z
 
+'''
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 fig = plt.figure()
@@ -77,4 +81,4 @@ Xf,Yf,Zf = plottable(trajectory[-1])
 ax.plot(Xi,Yi,Zi)
 ax.plot(Xf,Yf,Zf)
 plt.show()
-
+'''

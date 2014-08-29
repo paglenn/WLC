@@ -43,13 +43,22 @@ def delta_E(A,index) :
 
     return E_new - E_old
 
-def write(A,step,outfile):
-
+def write_tangents(A,step,outfile):
 
     outfile.write('step ' + str(step) +'\n')
     for monomer in A:
 
         outfile.write('{0}\t{1}\t{2}\n'.format(monomer.t[0],monomer.t[1],monomer.t[2]) )
+
+    outfile.write('\n')
+
+def write_coordinates(A,step,outfile):
+
+    outfile.write('step' + str(step) + '\n')
+
+    for monomer in A:
+
+        outfile.write('{0}\t{1}\t{2}\n'.format(monomer.x[0],monomer.x[1],monomer.x[2]) )
 
     outfile.write('\n')
 

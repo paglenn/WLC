@@ -1,11 +1,10 @@
-# actin filament monte carlo routine
-
+# single actin filament (WLC) monte carlo routine
 import numpy as np
 from actin import *
 
 # choose initial configuration to be along z-axis
-dx = 1
-L =  100
+dx = 0.002
+L =  0.02
 nsteps = int(1e5)
 N = int(L/dx) + 1
 data_file = open('output.dat','w')
@@ -14,8 +13,8 @@ positions = np.zeros((N,3))
 positions[:,2] = np.linspace(0,L,N)
 A = [ actin_filament(positions[i],dx) for i in range(N) ]
 
-# write initial config to file
-write(A,0,data_file)
+# write initial configuration to file
+write_tangents(A,0,data_file)
 
 for j in range(1,nsteps+1):
 
@@ -35,7 +34,7 @@ for j in range(1,nsteps+1):
 
     update(A,random_index)
 
-    write(A,j,data_file)
+    write_tangents(A,j,data_file)
 
 data_file.close()
 
