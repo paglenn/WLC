@@ -2,8 +2,8 @@ import numpy as np
 infile = open('output.dat','r')
 
 num_steps = int(1e5)
-dx = 1
-L = 100
+dx = 0.002
+L = 0.1
 num_actins = int(L/dx)  + 1
 
 trajectory = [ list() for x in range(num_steps+1) ]
@@ -21,6 +21,13 @@ for line in infile.readlines():
 
     data = [float(x) for x in line2]
     trajectory[step].append(np.array(data))
+
+for filament in trajectory:
+    for actin in filament:
+        if np.linalg.norm(actin) -1.0 > 1e-6 :
+            print(np.linalg.norm(actin),"uh-oh")
+            quit()
+
 
 # compute P( cos \theta  )
 import matplotlib.pyplot as plt

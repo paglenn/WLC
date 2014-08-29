@@ -5,8 +5,8 @@ if not os.path.isfile(infile): exit('Data file missing!')
 infile = open(infile,'r')
 
 num_steps = int(1e5)
-dx =1
-L = 100
+dx =0.002
+L = 0.1
 Ldx = int(L/dx)
 num_actins = Ldx + 1
 
@@ -53,14 +53,28 @@ def mf_energy():
 
 Tn, R = calculate_displacement()
 print("net orientation: ", Tn)
-print("horizontal displacement: ", R)
+print("in-plane displacement: ", R)
 F = free_energy()
 print("free energy: ", F)
+
+def plottable(filament):
+    s = np.zeros(filament[0].shape)
+    X,Y,Z = [list() for x in [1,2,3] ]
+    for i in range(len(filament)):
+        x,y,z = dx * (filament[i] + s)
+        s = s + filament[i]
+        X.append(x)
+        Y.append(y)
+        Z.append(z)
+    return X,Y,Z
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
-ax.plot(trajectory[-1])
-ax.plot(trajectory[0])
+Xi,Yi,Zi = plottable(trajectory[0])
+Xf,Yf,Zf = plottable(trajectory[-1])
+ax.plot(Xi,Yi,Zi)
+ax.plot(Xf,Yf,Zf)
+plt.show()
 
