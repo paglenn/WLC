@@ -3,17 +3,26 @@ import numpy as np
 from actin import *
 from parameters import *
 
-# specific parameters
+# choose initial configuration to be along z-axis
+'''
+dx = 0.002
+L =  0.2
+numsteps = int(1e3)
+N = int(L/dx) + 1
+data_file = open('output.dat','w')
+
+# umbrella sampling windows
+num_windows = 10
+windows = [(i*L/num_windows,(1+i)*L/num_windows) for i in range(num_windows) ]
+
+'''
 outfile = open(data_file, 'w')
 N = num_actins
-
-# choose initial configuration to be along z-axis
 positions = np.zeros((N,3))
 positions[:,2] = np.linspace(0,L,N)
 A0 = [ actin_filament(positions[i],dx) for i in range(N) ]
 A = list(A0)
-
-# instead of rigid initial configuration, rotate all by their own angle ?
+# instead of rigid initial configuration, rotate all by their own angle
 '''
 for i in range(len(A)):
 

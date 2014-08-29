@@ -1,7 +1,10 @@
 import numpy as np
-from parameters import *
 infile = open('output.dat','r')
 
+num_steps = int(1e5)
+dx = 0.002
+L = 0.1
+num_actins = int(L/dx)  + 1
 
 trajectory = [ list() for x in range(num_steps+1) ]
 step = -1
@@ -42,10 +45,6 @@ plt.hist(cos,bins=100,range=(-1,1),normed=True,histtype='step')
 plt.plot(x,P,'k',lw=1.2)
 plt.xlabel(r'$\cos \theta $')
 plt.ylabel(r'$P(\cos \theta ) $')
-plt.subplot(222)
-plt.hist(cos,bins=100,range=(-1,1),normed=True,histtype='step',log=True)
-plt.semilogy(x,P,'k',lw=1.2)
-plt.xlabel('log scale')
 
 # compute correlator
 R = range(0,20)

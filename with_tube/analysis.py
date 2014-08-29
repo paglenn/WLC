@@ -1,8 +1,14 @@
 import numpy as np
 import os
-from parameters import *
-if not os.path.isfile(data_file): exit('Data file missing!')
-infile = open(data_file,'r')
+infile = 'output.dat'
+if not os.path.isfile(infile): exit('Data file missing!')
+infile = open(infile,'r')
+
+num_steps = int(1e5)
+dx = 0.002
+L = 0.2
+Ldx = int(L/dx)
+num_actins = Ldx + 1
 
 trajectory = [ list() for x in range(num_steps+1) ]
 step = -1
@@ -18,36 +24,23 @@ for line in infile.readlines():
     data = [float(x) for x in line2]
     trajectory[step].append(np.array(data))
 
-T = trajectory[-1][-1]
-
 # calculate net horizontal displacement and net orientation
 def calculate_displacement():
 
     init_filament = trajectory[0]
     final_filament = trajectory[-1]
-    _R = z = 0
+    R = T = 0
     for i in range(len(final_filament)):
         scalar_projection = np.dot(final_filament[i],init_filament[i])/np.linalg.norm(init_filament[i])**2.
-        z += scalar_projection * initial_filament[i]
         dR = final_filament[i] - scalar_projection*init_filament[i]
-        if np.linalg.norm(dR) > 0:
+        if np.linalg.norm(dR) != 0:
             dR = dR / np.linalg.norm(dR)
-        _R += dR * dx
+        R += dR * dx
 
-    return z, _R
+        T += final_filament[i]
 
-def calculate_height_dist() :
-    init_filament = trajectory[0]
-    Z = []
-    for j in range(len(trajectory)):
-        filament = trajectory[j]
-        z = 0
-        for i in range(len(trajectory[j])):
-            scalar_projection = np.dot(filament[i],init_filament[i]) / np.linalg.norm(init_filament[i])**2.
-            _t = scalar_projection * init_filament[i]
-            z += np.linalg.norm(_t)
-        Z.append(dx*z)
-    return Z
+    Tn = T / np.linalg.norm(T)
+    return Tn, R
 
 # calculate net difference in tangent vectors
 dT = trajectory[-1][-1] - trajectory[-1][0]
@@ -59,14 +52,30 @@ def free_energy():
 def mf_energy():
     return 1./2 * (1./L) * np.linalg.norm(dT) ** 2.
 
-#_R = calculate_displacement()
-#_T = (np.dot(_T,_R)/np.linalg.norm(_R)**2.) * _R
-#print("in-plane displacement: ", _R)
-#F = free_energy()
-#print("free energy: ", F)
-Z = calculate_height_dist()
-import matplotlib.pyplot as plt
-plt.hist(Z,bins= 100,range=(0,L),histtype='step',normed=True,log=True)
-plt.show()
+Tn, R = calculate_displacement()
+print("net orientation: ", Tn)
+print("in-plane displacement: ", R)
+F = free_energy()
+print("free energy: ", F)
 
+def plottable(filament):
+    s = np.zeros(filament[0].shape)
+    X,Y,Z = [list() for x in [1,2,3] ]
+    for i in range(len(filament)):
+        x,y,z = dx * (filament[i] + s)
+        s = s + filament[i]
+        X.append(x)
+        Y.append(y)
+        Z.append(z)
+    return X,Y,Z
+
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+Xi,Yi,Zi = plottable(trajectory[0])
+Xf,Yf,Zf = plottable(trajectory[-1])
+ax.plot(Xi,Yi,Zi)
+ax.plot(Xf,Yf,Zf)
+plt.show()
 
