@@ -3,7 +3,7 @@ from parameters import *
 infile = open('output.dat','r')
 
 
-trajectory = [ list() for x in range(num_steps+1) ]
+trajectory = [ list() for x in range(numsteps+1) ]
 step = -1
 for line in infile.readlines():
     line2 = line[:-1].split('\t')
@@ -14,7 +14,7 @@ for line in infile.readlines():
     elif len(line2) == 1:
         continue
 
-    if step > num_steps: continue
+    if step > numsteps: continue
 
     data = [float(x) for x in line2]
     trajectory[step].append(np.array(data))

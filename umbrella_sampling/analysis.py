@@ -4,7 +4,7 @@ from parameters import *
 if not os.path.isfile(data_file): exit('Data file missing!')
 infile = open(data_file,'r')
 
-trajectory = [ list() for x in range(num_steps+1) ]
+trajectory = [ list() for x in range(numsteps+1) ]
 step = -1
 for line in infile.readlines():
     line2 = line[:-1].split('\t')

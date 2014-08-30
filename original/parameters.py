@@ -1,6 +1,6 @@
 numsteps = int(1e5)
 L = 0.2
-dx = 0.002
+dx = 0.02
 Ldx = int(L/dx)
 num_actins = Ldx + 1
 data_file = 'output.dat'

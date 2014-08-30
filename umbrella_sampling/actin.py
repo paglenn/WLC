@@ -55,8 +55,9 @@ def calculate_z(A0,A):
     for i in range(N):
         scalar_projection = np.dot(A[i].t,A0[i].t) / np.linalg.norm(A0[i].t)**2.
         proj = scalar_projection * A0[i].t
-        z += np.linalg.norm(proj) * dx
-    return z
+        z += proj * dx
+
+    return np.linalg.norm(z)
 
 def deltaE_z_bias(A0,A,index,window):
     dE = deltaE(A,index)
@@ -68,6 +69,19 @@ def deltaE_z_bias(A0,A,index,window):
         dE = np.inf
 
     return dE
+
+def adjust_z(A0,A,window):
+    z = calculate_z(A0,A)
+
+    while abs(z - 0.5 * (min(window) + max(window)) ) > 2*dx:
+
+        random_vec = np.random.randn(3)
+        random_index= np.random.choice(range(N))
+        A[random_index].perturb(random_vec)
+        update(A,random_index)
+        z = calculate_z(A0,A)
+
+    return A
 
 def write_tangents(A,step,outfile):
 

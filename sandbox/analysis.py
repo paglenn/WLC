@@ -4,7 +4,7 @@ from parameters import *
 if not os.path.isfile(data_file): exit('Data file missing!')
 infile = open(data_file,'r')
 
-trajectory = [ list() for x in range(num_steps+1) ]
+trajectory = [ list() for x in range(numsteps+1) ]
 step = -1
 for line in infile.readlines():
     line2 = line[:-1].split('\t')
@@ -36,18 +36,39 @@ def calculate_displacement():
 
     return z, _R
 
-def calculate_height_dist() :
-    init_filament = trajectory[0]
+
+def calculate_R_dist() :
+    allR = []
+    for filament in trajectory:
+        R = np.zeros(filament[0].shape)
+
+        for monomer in filament:
+
+            R += monomer
+
+        allR.append(dx*R)
+
+    return allR
+
+def calculate_height_dist():
+    t_init = trajectory[0][0]
     Z = []
-    for j in range(len(trajectory)):
-        filament = trajectory[j]
-        z = 0
-        for i in range(len(trajectory[j])):
-            scalar_projection = np.dot(filament[i],init_filament[i]) / np.linalg.norm(init_filament[i])**2.
-            _t = scalar_projection * init_filament[i]
-            z += np.linalg.norm(_t)
-        Z.append(dx*z)
+    for R in calculate_R_dist():
+
+        tR = (np.dot(R,t_init)/np.linalg.norm(t_init)**2. ) * t_init
+        print(tR*L/dx)
+        quit()
+
+        Z.append(np.linalg.norm(tR) )
+
     return Z
+
+
+
+
+
+
+
 
 # calculate net difference in tangent vectors
 dT = trajectory[-1][-1] - trajectory[-1][0]

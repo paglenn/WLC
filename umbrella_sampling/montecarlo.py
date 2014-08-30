@@ -21,7 +21,6 @@ N = num_actins
 positions = np.zeros((N,3))
 positions[:,2] = np.linspace(0,L,N)
 A0 = [ actin_filament(positions[i],dx) for i in range(N) ]
-A = list(A0)
 # instead of rigid initial configuration, rotate all by their own angle
 '''
 for i in range(len(A)):
@@ -35,7 +34,10 @@ for i in range(len(A)):
 # write initial configuration to file
 write_tangents(A,0,outfile)
 
+
 for w in z_windows:
+
+    A = adjust_z(A0,A0,w)
 
     for j in range(1,numsteps+1):
 
