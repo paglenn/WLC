@@ -1,5 +1,5 @@
 numsteps = int(1e5)
-L = 0.2
+L = 1
 dx = 0.02
 Ldx = int(L/dx)
 num_actins = Ldx + 1

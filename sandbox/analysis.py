@@ -20,29 +20,13 @@ for line in infile.readlines():
 
 T = trajectory[-1][-1]
 
-# calculate net horizontal displacement and net orientation
-def calculate_displacement():
 
-    init_filament = trajectory[0]
-    final_filament = trajectory[-1]
-    _R = z = 0
-    for i in range(len(final_filament)):
-        scalar_projection = np.dot(final_filament[i],init_filament[i])/np.linalg.norm(init_filament[i])**2.
-        z += scalar_projection * initial_filament[i]
-        dR = final_filament[i] - scalar_projection*init_filament[i]
-        if np.linalg.norm(dR) > 0:
-            dR = dR / np.linalg.norm(dR)
-        _R += dR * dx
-
-    return z, _R
-
-
-def calculate_R_dist() :
+def calculate_displacements() :
     allR = []
     for filament in trajectory:
         R = np.zeros(filament[0].shape)
 
-        for monomer in filament:
+        for monomer in filament[:-1]:
 
             R += monomer
 
@@ -50,25 +34,16 @@ def calculate_R_dist() :
 
     return allR
 
-def calculate_height_dist():
+def alt_calculate_height_dist():
+    # as tangential component of R to initial displacement
     t_init = trajectory[0][0]
     Z = []
-    for R in calculate_R_dist():
+    for R in calculate_displacements():
 
         tR = (np.dot(R,t_init)/np.linalg.norm(t_init)**2. ) * t_init
-        print(tR*L/dx)
-        quit()
-
         Z.append(np.linalg.norm(tR) )
 
     return Z
-
-
-
-
-
-
-
 
 # calculate net difference in tangent vectors
 dT = trajectory[-1][-1] - trajectory[-1][0]
@@ -80,14 +55,27 @@ def free_energy():
 def mf_energy():
     return 1./2 * (1./L) * np.linalg.norm(dT) ** 2.
 
-#_R = calculate_displacement()
+#_R = calculate_displacements()
 #_T = (np.dot(_T,_R)/np.linalg.norm(_R)**2.) * _R
 #print("in-plane displacement: ", _R)
 #F = free_energy()
 #print("free energy: ", F)
-Z = calculate_height_dist()
+Z  = alt_calculate_height_dist()
+
+# convert from frequency distribution to probability dist
+
 import matplotlib.pyplot as plt
-plt.hist(Z,bins= 100,range=(0,L),histtype='step',normed=True,log=True)
+binContents, bins  = np.histogram(Z,bins= 100,range=(0,L),density=True)
+A = list() ; Z = list()
+for i in range(len(bins[:-1])) :
+    if binContents[i] != 0:
+        Z.append(bins[i])
+        A.append(-np.log(binContents[i]))
+plt.plot(Z,A)
+plt.title('Free energy')
+plt.xlabel(r'$z$')
+plt.ylabel(r'$\beta F(z)$')
+plt.savefig('z_dist.png')
 plt.show()
 
 

@@ -4,5 +4,5 @@ figure_1.png
 *.dat 
 window*
 output.dat
-
 *.png
+heights.dat
