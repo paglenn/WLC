@@ -1,22 +1,30 @@
 import numpy as np
 import os
 from parameters import *
-if not os.path.isfile(data_file): exit('Data file missing!')
-infile = open(data_file,'r')
 
-trajectory = [ list() for x in range(numsteps+1) ]
+data_files = []
+for fname in window_files:
+    if not os.path.isfile(fname): exit('Data file(s) missing!')
+    data_files.append( open(fname,'r') )
+
+
+trajectory = [ list() for x in range(num_windows * (numsteps+1) ) ]
 step = -1
-for line in infile.readlines():
-    line2 = line[:-1].split('\t')
+for infile in data_files:
 
-    if 'step' in line2[0]:
-        step += 1
-        continue
-    elif len(line2) == 1:
-        continue
+    for line in infile.readlines():
+        line2 = line[:-1].split('\t')
 
-    data = [float(x) for x in line2]
-    trajectory[step].append(np.array(data))
+        if 'step' in line2[0]:
+            step += 1
+            continue
+        elif len(line2) == 1:
+            continue
+        elif 'finished' in line2[0]:
+            break
+
+        data = [float(x) for x in line2]
+        trajectory[step].append(np.array(data))
 
 T = trajectory[-1][-1]
 
@@ -36,17 +44,29 @@ def calculate_displacement():
 
     return z, _R
 
-def calculate_height_dist() :
-    init_filament = trajectory[0]
+def calculate_displacements() :
+    allR = []
+    for filament in trajectory:
+        R = np.zeros(filament[0].shape)
+
+        for monomer in filament[:-1]:
+
+            R += monomer
+
+        allR.append(dx*R)
+
+    return allR
+
+
+def calculate_height_dist():
+    # as tangential component of R to initial displacement
+    t_init = trajectory[0][0]
     Z = []
-    for j in range(len(trajectory)):
-        filament = trajectory[j]
-        z = 0
-        for i in range(len(trajectory[j])):
-            scalar_projection = np.dot(filament[i],init_filament[i]) / np.linalg.norm(init_filament[i])**2.
-            _t = scalar_projection * init_filament[i]
-            z += np.linalg.norm(_t)
-        Z.append(dx*z)
+    for R in calculate_displacements():
+
+        tR = (np.dot(R,t_init)/np.linalg.norm(t_init)**2. ) * t_init
+        Z.append(np.linalg.norm(tR) )
+
     return Z
 
 # calculate net difference in tangent vectors
@@ -59,14 +79,24 @@ def free_energy():
 def mf_energy():
     return 1./2 * (1./L) * np.linalg.norm(dT) ** 2.
 
-#_R = calculate_displacement()
-#_T = (np.dot(_T,_R)/np.linalg.norm(_R)**2.) * _R
-#print("in-plane displacement: ", _R)
-#F = free_energy()
-#print("free energy: ", F)
-Z = calculate_height_dist()
+
+Z  = calculate_height_dist()
+
+# convert from frequency distribution to probability dist
+
 import matplotlib.pyplot as plt
-plt.hist(Z,bins= 100,range=(0,L),histtype='step',normed=True,log=True)
+binContents, bins  = np.histogram(Z,bins= 100,range=(0,L),density=True)
+A = list() ; Z = list()
+for i in range(len(bins[:-1])) :
+    if binContents[i] != 0:
+        Z.append(bins[i])
+        A.append(-np.log(binContents[i]))
+
+plt.plot(Z,A)
+plt.title('Free energy')
+plt.xlabel(r'$z$')
+plt.ylabel(r'$\beta F(z)$')
+plt.savefig('z_dist.png')
 plt.show()
 
 
