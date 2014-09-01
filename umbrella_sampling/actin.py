@@ -1,25 +1,26 @@
 import numpy as np
-from parameters import dx,num_actins,t0
+import parameters as par
 
 class actin_filament:
 
-    def __init__(self,x,dx):
+    def __init__(self,x):
 
         self.x = x
-        self.t = np.array([0,0,1])
+        self.t = np.copy(par.t0)
         self.t_old = np.copy(self.t)
-        dx = dx
 
-    def perturb(self,vec):
+    def perturb(self):
+
         self.t_old = np.copy(self.t )
-        self.t = self.t +  vec
+        random_vec = np.random.randn(3)
+        self.t = self.t +  random_vec
         self.t = self.t / np.linalg.norm(self.t)
 
     def revert(self):
-        self.t = self.t_old
+        self.t = np.copy(self.t_old)
 
     def shift(self,x,t):
-        self.x = x + t*dx
+        self.x = x + t*par.dx
 
     def rotate(self,phi):
 
@@ -39,38 +40,32 @@ def deltaE(filament,index) :
     E_new = 0.
 
     if index + 1 != len(filament):
-        E_old -= 1./dx * np.dot(filament[index+1].t,filament[index].t_old)
-        E_new -= 1./dx * np.dot(filament[index+1].t,filament[index].t)
+        E_old -= 1./par.dx * np.dot(filament[index+1].t,filament[index].t_old)
+        E_new -= 1./par.dx * np.dot(filament[index+1].t,filament[index].t)
 
     if index != 0:
-        E_old -= 1./dx * np.dot(filament[index-1].t,filament[index].t_old)
-        E_new -= 1./dx * np.dot(filament[index-1].t,filament[index].t)
+        E_old -= 1./par.dx * np.dot(filament[index-1].t,filament[index].t_old)
+        E_new -= 1./par.dx * np.dot(filament[index-1].t,filament[index].t)
 
 
     return E_new - E_old
 
-def calculate_z(A0,filament):
-    z = 0
-    N = len(filament)
-    for i in range(N):
-        scalar_projection = np.dot(filament[i].t,A0[i].t) / np.linalg.norm(A0[i].t)**2.
-        proj = scalar_projection * A0[i].t
-        z += proj * dx
+def calculate_r_vec(filament):
+    r_vec = np.zeros(par.t0.shape)
+    for actin in filament[:-1]:
+        r_vec += par.dx * actin.t
+    return r_vec
 
-    return np.linalg.norm(z)
-
-def calculate_z(A0,filament):
-    R = np.zeros(filament[0].t.shape)
-    for monomer in filament[:-1]:
-        R += dx*monomer.t
-    z_vec = np.dot(R,t0) * t0  # norm(t0) == 1 so no division needed
+def calculate_z(filament):
+    r = calculate_r_vec(filament)
+    z_vec = np.dot(r,par.t0) * par.t0  # norm(t0) == 1 so no division needed
     z = np.linalg.norm(z_vec)
     return z
 
-def deltaE_z_bias(A0,filament,index,window,zFile):
+def deltaE_z_bias(filament,index,window,zFile):
     dE = deltaE(filament,index)
 
-    z = calculate_z(A0,filament)
+    z = calculate_z(filament)
 
     if z < min(window) or z > max(window):
 
@@ -81,20 +76,42 @@ def deltaE_z_bias(A0,filament,index,window,zFile):
 
     return dE
 
-def adjust_z(A0,filament,window):
-    z = calculate_z(A0,filament)
+def calculate_rp(filament):
+
+    r_vec = calculate_r_vec(filament)
+    z_vec = np.dot(r_vec,par.t0) * par.t0
+    rp_vec = r_vec - z_vec
+    rp = np.linalg.norm(rp_vec)
+    return rp
+
+def deltaE_rp_bias(filament,index,window,rpFile):
+    dE = deltaE(filament,index)
+
+    rp = calculate_rp(filament)
+    #print(rp)
+
+    if rp < min(window) or rp > max(window):
+
+        dE = np.inf
+
+    else:
+        rpFile.write(str(rp)+'\n')
+
+    return dE
+
+def adjust_z(filament,window):
+    z = calculate_z(filament)
     window_mean = 0.5*sum(window)
-    width = max(window) - min(window)
-    target = window_mean + width/2 * np.random.uniform(-1,1)
-    tol = width / 4.
+    w = max(window) - min(window)
+    target = window_mean + w/2. * np.random.uniform(-1,1)
+    tol = w/4.
 
     while abs(z - target ) > tol :
 
-        random_index= np.random.choice(range(num_actins))
-        random_vec = np.random.randn(3)
-        old_proj = np.dot(filament[random_index].t,t0)
-        filament[random_index].perturb(random_vec)
-        new_proj = np.dot(filament[random_index].t,t0)
+        random_index= np.random.choice(range(par.num_actins))
+        old_proj = np.dot(filament[random_index].t,par.t0)
+        filament[random_index].perturb()
+        new_proj = np.dot(filament[random_index].t,par.t0)
         change = new_proj - old_proj
 
         if z > target and change > 0:
@@ -106,7 +123,37 @@ def adjust_z(A0,filament,window):
 
         if change != 0 :
             update(filament,random_index)
-            z = calculate_z(A0,filament)
+            z = calculate_z(filament)
+
+    return filament
+
+def adjust_rp(filament,window):
+    rp = calculate_rp(filament)
+    window_mean = 0.5*sum(window)
+    w = max(window) - min(window)
+    target = window_mean + w/2. * np.random.uniform(-1,1)
+    tol = w/4.
+
+    while abs(rp - target ) > tol :
+        #print('adjusting...',rp,'target: ',target)
+
+        random_index= np.random.choice(range(par.num_actins))
+        filament[random_index].perturb()
+        new = calculate_rp(filament)
+
+        change = new - rp
+
+
+        if rp > target and change > 0:
+            filament[random_index].revert()
+            change = 0
+        if rp < target and change < 0:
+            filament[random_index].revert()
+            change = 0
+
+        if change != 0 :
+            update(filament,random_index)
+            rp = calculate_rp(filament)
 
     return filament
 
@@ -129,6 +176,26 @@ def write_coordinates(filament,step,outfile):
 
     outfile.write('\n')
 
+
+def mc_step(filament,window,outfile):
+
+        random_index= np.random.choice(range(par.Ldx))
+        #print(filament[random_index].t)
+
+        filament[random_index].perturb()
+        #print(filament[random_index].t)
+
+        dE = deltaE_rp_bias(filament,random_index,window,outfile)
+
+        if dE > 0:
+            if np.random.rand() > np.exp(-dE):
+                filament[random_index].revert()
+                return filament
+
+        update(filament,random_index)
+        return filament
+
+#    return filament
 
 
 

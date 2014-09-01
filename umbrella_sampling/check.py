@@ -1,25 +1,38 @@
 import numpy as np
+import os
 from parameters import *
-infile = open('output.dat','r')
 
+def retrieve():
+    data_files = []
+    for fname in window_files:
+        if not os.path.isfile(fname):
+            print(fname)
+            exit('Data file(s) missing!')
+        data_files.append( open(fname,'r') )
+    data_array = [ list() for x in range(total_runs) ]
+    step = -1
+    for infile in data_files:
 
-trajectory = [ list() for x in range(num_steps+1) ]
-step = -1
-for line in infile.readlines():
-    line2 = line[:-1].split('\t')
+        for line in infile.readlines():
+            line2 = line[:-1].split('\t')
 
-    if 'step' in line2[0]:
-        step += 1
-        continue
-    elif len(line2) == 1:
-        continue
+            if 'step' in line2[0]:
+                step += 1
+                continue
+            elif len(line2) == 1:
+                continue
+            elif 'finished' in line2[0]:
+                break
 
-    if step > num_steps: continue
+            data = [float(x) for x in line2]
+            data_array[step].append(np.array(data))
 
-    data = [float(x) for x in line2]
-    trajectory[step].append(np.array(data))
+        infile.close()
+    return data_array
 
-for filament in trajectory:
+data_array = retrieve()
+
+for filament in data_array:
     for actin in filament:
         if np.linalg.norm(actin) -1.0 > 1e-6 :
             print(np.linalg.norm(actin),"uh-oh")
@@ -29,7 +42,7 @@ for filament in trajectory:
 # compute P( cos \theta  )
 import matplotlib.pyplot as plt
 cos = []
-for filament in trajectory:
+for filament in data_array:
 
     for i in range(num_actins - 1) :
 
@@ -48,10 +61,10 @@ plt.semilogy(x,P,'k',lw=1.2)
 plt.xlabel('log scale')
 
 # compute correlator
-R = range(0,20)
+R = range(0,num_actins//5)
 G = [0 for r in R ]
 num_samples = list(G)
-for filament in trajectory[1:]:
+for filament in data_array:
 
     for r in R:
 

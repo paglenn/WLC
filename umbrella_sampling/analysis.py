@@ -10,7 +10,7 @@ def retrieve():
     for fname in window_files:
         if not os.path.isfile(fname): exit('Data file(s) missing!')
         data_files.append( open(fname,'r') )
-    data_array = [ list() for x in range(total_runs) ]
+    data_array = [ list() for x in range(num_frames) ]
     step = -1
     for infile in data_files:
 
@@ -34,6 +34,7 @@ def retrieve():
 
 #data_array =retrieve()
 #T = data_array[-1][-1]
+#Tp = T - np.dot(T,t0) * t0
 
 
 def calculate_displacements(data_array) :
@@ -50,10 +51,9 @@ def calculate_displacements(data_array) :
     return allR
 
 
-def calculate_height_dist():
+def calculate_height_dist(data_array):
     # as tangential component of R to initial displacement
-    #t_init = data_array[0][0]
-    t_init = t0 #from parameter file
+    #t0 = data_array[0][0]
     Z = []
     if os.path.isfile(z_file):
         zFile = open(z_file,'r')
@@ -63,44 +63,88 @@ def calculate_height_dist():
         zFile = open(z_file,'w')
         if data_array is None: data_array = retrieve()
         for R in calculate_displacements(data_array):
-            tR = (np.dot(R,t_init)/np.linalg.norm(t_init)**2. ) * t_init
-            z = np.linalg.norm(tR)
+            Rt = np.dot(R,t0) * t0 # norm(t0) == 1
+            z = np.linalg.norm(Rt)
             Z.append(z )
             zFile.write(str(z)+'\n')
 
     zFile.close()
 
-    return Z
+    import matplotlib.pyplot as plt
+    binContents, bins  = np.histogram(Z,bins= 100,range=(0,L),density=True)
+    A = list() ; Z = list()
+    for i in range(len(bins[:-1])) :
+        if binContents[i] != 0:
+            Z.append(bins[i])
+            A.append(-np.log(binContents[i]))
 
+    # shift windowed curves so they are continuous
+    j = 0
+    delta = dict()
+    delta[j] = 0.
+    for i in range(len(Z)):
+        if Z[i] > z_window_edges[j]:
+            j += 1
+            A[i-1] = A[i-2]
+            delta[j] = A[i] - A[i-1]
+        A[i] -= delta[j]
 
-Z  = calculate_height_dist()
+    return Z,A
 
-# convert from frequency distribution to probability dist
+def calculate_horizon_dist(data_array):
+    t_init = t0
+    RP = list()
+    if os.path.isfile(rp_file):
+        rpFile = open(rp_file,'r')
+        for line in rpFile.readlines():
+            RP.append(float(line[:-1]))
+    else:
+        rpFile = open(rp_file,'w')
+        if data_array is None: data_array = retrieve()
+        for R in calculate_displacements(data_array):
+            z = np.dot(R,t_init)  * t_init
+            rp = np.linalg.norm(R - z)
+            RP.append(rp)
+            rpFile.write(str(rp) + '\n')
 
+    rpFile.close()
+
+    binContents, bins  = np.histogram(RP,bins= 100,range=(0,L),density=True)
+    A = list() ; RP = list()
+    for i in range(len(bins[:-1])) :
+        if binContents[i] != 0:
+            RP.append(bins[i])
+            A.append(-np.log(binContents[i]))
+
+    # shift windowed curves so they are continuous
+    j = 0
+    delta = dict()
+    delta[j] = 0.
+    for i in range(len(RP)):
+        if RP[i] > rp_window_edges[j]:
+            j += 1
+            A[i-1] = A[i-2]
+            delta[j] = A[i] - A[i-1]
+        A[i] -= delta[j]
+
+    return RP,A
+
+F_rp = calculate_horizon_dist(data_array)
 import matplotlib.pyplot as plt
-binContents, bins  = np.histogram(Z,bins= 100,range=(0,L),density=True)
-A = list() ; Z = list()
-for i in range(len(bins[:-1])) :
-    if binContents[i] != 0:
-        Z.append(bins[i])
-        A.append(-np.log(binContents[i]))
+plt.plot(F_rp[0],F_rp[1],'b-.')
+plt.show()
 
-# shift windowed curves so they are continuous
-j = 0
-delta = dict()
-delta[j] = 0.
-for i in range(len(Z)):
-    if Z[i] > window_edges[j]:
-        j += 1
-        A[i-1] = A[i-2]
-        delta[j] = A[i] - A[i-1]
-    A[i] -= delta[j]
 
-plt.plot(Z,A,'b-.')
+
+'''
+F_z = calculate_height_dist(data_array)
+import matplotlib.pyplot as plt
+plt.plot(F_z[0],F_z[1],'b-.')
+#plt.savefig('z_dist.png')
 #plt.vlines(window_edges,min(A),max(A))
 plt.title('Free energy')
 plt.xlabel(r'$z$')
 plt.ylabel(r'$\beta F(z)$')
-plt.savefig('z_dist.png')
 plt.show()
+'''
 
