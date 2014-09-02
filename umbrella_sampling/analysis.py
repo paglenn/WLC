@@ -138,11 +138,10 @@ def calculate_horizon_dist(data_array):
         A[i] -= delta[j]
 
     return RP,A
-
 '''
 F_rp = calculate_horizon_dist(data_array)
 import matplotlib.pyplot as plt
-plt.plot(F_rp[0],F_rp[1],'b')
+plt.plot(F_rp[0],F_rp[1],'b-.')
 plt.xlabel(r'$R_{\perp}$')
 plt.ylabel(r'$\beta F(R_{\perp})$ ')
 plt.title('Free energy' )
@@ -152,14 +151,17 @@ plt.show()
 
 
 
+'''
 F_z = calculate_height_dist(data_array)
 import matplotlib.pyplot as plt
 plt.plot(F_z[0],F_z[1],'b-.')
-#plt.savefig('z_dist.png')
+plt.savefig('z_dist.png')
 #plt.vlines(window_edges,min(A),max(A))
 plt.title('Free energy')
 plt.xlabel(r'$z$')
 plt.ylabel(r'$\beta F(z)$')
 plt.show()
+'''
+
 
 

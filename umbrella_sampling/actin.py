@@ -57,6 +57,16 @@ def calculate_rp(t):
     rp = np.linalg.norm(rp_vec)
     return rp
 
+def calculate_rptp(t):
+
+    r_vec = calculate_r_vec(t)
+    z_vec = np.dot(r_vec,par.t0) * par.t0
+    rp_vec = r_vec - z_vec
+    tN = t[-1]
+    tp = tN - np.dot(tN, par.t0) * par.t0
+    rptp = np.dot(tp,rp_vec)
+    return rptp
+
 def deltaE_rp_bias(t,t_old,index,window):
     dE = deltaE(t,t_old,index)
 
