@@ -143,48 +143,62 @@ def mc_step(t):
         random_index= np.random.choice(range(par.num_actins))
         #print(t[random_index].t)
 
-        t,t_old = perturb(t,random_index)
-        #print(t[random_index].t)
+        # define random axis
+        axis = np.random.randn(3)
+        axis = axis / np.linalg.norm(axis)
 
-        dE = delta_E(t,random_index)
+        # other way: define by (theta,phi pair)
+        phi = np.random.uniform(0,2*np.pi)
+        r = np.random.rand()
+        theta = np.acos(1 - 2*r)
+        axis = [np.cos(phi)*np.sin(theta), np.
+        pocket  = [ random_index ]
+        cluster = [ random_index ]
 
-        if dE > 0:
-            if np.random.rand() > np.exp(-dE):
-                t[random_index] = t_old
-                return t
+        while pocket != [] :
+                j = np.random.choice(pocket)
+                for nn in par.nbr[j]:
+                    nn_para = np.dot(t[nn],axis)
+                    j_para = np.dot(t[j],axis)
+                    if nn_para*j_para > 0 and nn not in cluster:
+                        p_add = 1 - np.exp(-2./par.dx * nn_para*j_para)
+                        if np.random.rand() < p_add:
+                            pocket.append(nn)
+                            cluster.append(nn)
+                pocket.remove(j)
+        for j in cluster:
+            proj = axis * np.dot(t[j],axis)
+            t[j] = t[j] - 2*(t[j] - proj)
 
-        #update(t,random_index)
         return t
 
-def umbrella_mc_step(t,window):
+'''
+def mc_step(t):
 
         random_index= np.random.choice(range(par.num_actins))
         #print(t[random_index].t)
 
-        t,t_old = perturb(t,random_index)
-        #print(t[random_index].t)
+        random_vec = np.random.randn(3)
+        pocket  = [ random_index ]
+        cluster = [ random_index ]
 
-        dE = deltaE_z_bias(t,t_old,random_index,window)
+        while pocket != [] :
+                j = np.random.choice(pocket)
+                for nn in par.nbr[j]:
+                    cos_old = np.dot(t[j],t[nn])
+                    t_new = t[j] + random_vec
+                    t_new = t_new / np.linalg.norm(t_new)
+                    cos_new = np.dot(t_new,t[nn])
+                    if np.dot(t[j],t[nn]) > 0 and nn not in cluster:
+                        p_add = 1 - np.exp(-1./par.dx * (cos_old - cos_new))
+                        if np.random.rand() < p_add:
+                            pocket.append(nn)
+                            cluster.append(nn)
+                pocket.remove(j)
 
-        if dE > 0:
-            if np.random.rand() > np.exp(-dE):
-                t[random_index] = t_old
-                return
+        for j in cluster:
+            #print(len(cluster))
+            t[j] = (t[j] + random_vec) / np.linalg.norm(t[j] + random_vec)
 
-
-        #update(t,random_index)
-
-#    return t
-
-
-
-
-
-
-
-
-
-
-
-
-
+        return t
+'''

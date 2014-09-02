@@ -3,34 +3,32 @@ import os
 from parameters import *
 
 def retrieve():
-    data_files = []
-    for fname in window_files:
-        if not os.path.isfile(fname):
-            print(fname)
-            exit('Data file(s) missing!')
-        data_files.append( open(fname,'r') )
-
-    data_array = [ list() for x in range(total_frames) ]
+    fname = data_file
+    if not os.path.isfile(fname):
+        print(fname)
+        exit('Data file(s) missing!')
+    data_array = [ list() for x in range(numsteps) ]
     step = -1
-    for infile in data_files:
+    infile = open(fname,'r')
 
-        for line in infile.readlines():
-            line2 = line[:-1].split('\t')
+    for line in infile.readlines():
+        line2 = line[:-1].split('\t')
 
-            if 'step' in line2[0]:
-                step += 1
-                continue
-            elif len(line2) == 1:
-                continue
-            elif 'finished' in line2[0]:
-                break
+        if 'step' in line2[0]:
+            step += 1
+            continue
+        elif len(line2) == 1:
+            continue
+        elif 'finished' in line2[0]:
+            break
 
-            data = [float(x) for x in line2]
-            data_array[step].append(np.array(data))
+        data = [float(x) for x in line2]
+        data_array[step].append(np.array(data))
 
-        infile.close()
+    infile.close()
 
     return data_array
+
 
 data_array = retrieve()
 

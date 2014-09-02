@@ -1,6 +1,6 @@
 # simulation parameters
 
-numsteps = int(1e3)
+numsteps = int(1e5)
 
 #L = 0.5
 L = 1.0
@@ -17,6 +17,16 @@ data_file = 'output.dat'
 import numpy as np
 
 t0 = np.array([0,0,1])
+
+nbr = dict()
+for j in range(num_actins):
+
+    if j == 0: nbr[j] = [j+1]
+    elif j+1 == num_actins : nbr[j] = [j-1]
+    else: nbr[j] = [j+1,j-1]
+
+
+
 
 
 # for umbrella sampling
