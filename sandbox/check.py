@@ -1,64 +1,82 @@
 import numpy as np
+import os
 from parameters import *
-infile = open('output.dat','r')
 
+def retrieve():
+    data_files = []
+    for fname in window_files:
+        if not os.path.isfile(fname):
+            print(fname)
+            exit('Data file(s) missing!')
+        data_files.append( open(fname,'r') )
 
-trajectory = [ list() for x in range(num_steps+1) ]
-step = -1
-for line in infile.readlines():
-    line2 = line[:-1].split('\t')
+    data_array = [ list() for x in range(total_frames) ]
+    step = -1
+    for infile in data_files:
 
-    if 'step' in line2[0]:
-        step += 1
-        continue
-    elif len(line2) == 1:
-        continue
+        for line in infile.readlines():
+            line2 = line[:-1].split('\t')
 
-    if step > num_steps: continue
+            if 'step' in line2[0]:
+                step += 1
+                continue
+            elif len(line2) == 1:
+                continue
+            elif 'finished' in line2[0]:
+                break
 
-    data = [float(x) for x in line2]
-    trajectory[step].append(np.array(data))
+            data = [float(x) for x in line2]
+            data_array[step].append(np.array(data))
 
-for filament in trajectory:
-    for actin in filament:
-        if np.linalg.norm(actin) -1.0 > 1e-6 :
+        infile.close()
+
+    return data_array
+
+data_array = retrieve()
+
+'''
+for t in data_array:
+    for actin in t:
+        if abs(np.linalg.norm(actin) - 1.0) > 0.01*dx :
             print(np.linalg.norm(actin),"uh-oh")
             quit()
+'''
 
 
 # compute P( cos \theta  )
 import matplotlib.pyplot as plt
 cos = []
-for filament in trajectory:
+for t in data_array:
 
     for i in range(num_actins - 1) :
 
-        cos.append( np.dot(filament[i],filament[i+1]) )
+        cos.append( np.dot(t[i],t[i+1]) )
 
-x = np.linspace(-1,1,100)
+x = np.linspace(0.8,1,100)
 P = 1./dx * np.exp(x/dx) / (2*np.sinh(1./dx) )
-plt.subplot(221)
-plt.hist(cos,bins=100,range=(-1,1),normed=True,histtype='step')
+plt.subplot(121)
+plt.hist(cos,bins=100,range=(0.8,1),normed=True,histtype='step')
 plt.plot(x,P,'k',lw=1.2)
 plt.xlabel(r'$\cos \theta $')
 plt.ylabel(r'$P(\cos \theta ) $')
-plt.subplot(222)
-plt.hist(cos,bins=100,range=(-1,1),normed=True,histtype='step',log=True)
+plt.subplot(122)
+plt.hist(cos,bins=100,range=(0.8,1),normed=True,histtype='step',log=True)
 plt.semilogy(x,P,'k',lw=1.2)
 plt.xlabel('log scale')
-
+plt.show()
+'''
 # compute correlator
-R = range(0,20)
+R = range(0,num_actins//10)
 G = [0 for r in R ]
 num_samples = list(G)
-for filament in trajectory[1:]:
+for t in data_array:
 
     for r in R:
 
         for i in range(num_actins - r):
 
             num_samples[r] += 1
-            G[r] += np.dot(filament[i],filament[i+r])
+            G[r] += np.dot(t[i],t[i+r])
 
 
 for r in R:
@@ -92,3 +110,4 @@ plt.savefig('results.png')
 #plot_correlator('log')
 
 
+'''

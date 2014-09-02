@@ -1,81 +1,165 @@
 import numpy as np
 import os
 from parameters import *
-if not os.path.isfile(data_file): exit('Data file missing!')
-infile = open(data_file,'r')
-
-trajectory = [ list() for x in range(numsteps+1) ]
-step = -1
-for line in infile.readlines():
-    line2 = line[:-1].split('\t')
-
-    if 'step' in line2[0]:
-        step += 1
-        continue
-    elif len(line2) == 1:
-        continue
-
-    data = [float(x) for x in line2]
-    trajectory[step].append(np.array(data))
-
-T = trajectory[-1][-1]
 
 
-def calculate_displacements() :
+data_array = None
+
+def retrieve():
+    data_files = []
+    for fname in window_files:
+        if not os.path.isfile(fname): exit('Data file(s) missing!')
+        data_files.append( open(fname,'r') )
+    data_array = [ list() for x in range(total_frames) ]
+    step = -1
+    for infile in data_files:
+
+        for line in infile.readlines():
+            line2 = line[:-1].split('\t')
+
+            if 'step' in line2[0]:
+                step += 1
+                continue
+            elif len(line2) == 1:
+                continue
+            elif 'finished' in line2[0]:
+                break
+
+            data = [float(x) for x in line2]
+            data_array[step].append(np.array(data))
+
+        infile.close()
+    return data_array
+
+
+#data_array =retrieve()
+def calculate_Tp(data_array):
+
+    Tp = []
+    for t in data_array:
+
+        T = t[-1]
+        tp_vec = T - np.dot(T,t0)
+        tp= np.linalg.norm(tp_vec)
+        Tp.append(tp)
+
+    return Tp
+
+
+
+def calculate_displacements(data_array) :
     allR = []
-    for filament in trajectory:
-        R = np.zeros(filament[0].shape)
+    for t in data_array:
+        R = np.zeros(t[0].shape)
 
-        for monomer in filament[:-1]:
+        for r in t[:-1]:
 
-            R += monomer
+            R += r
 
         allR.append(dx*R)
 
     return allR
 
-def alt_calculate_height_dist():
+
+def calculate_height_dist(data_array):
     # as tangential component of R to initial displacement
-    t_init = trajectory[0][0]
+    #t0 = data_array[0][0]
     Z = []
-    for R in calculate_displacements():
+    if os.path.isfile(z_file):
+        zFile = open(z_file,'r')
+        for line in zFile.readlines():
+            Z.append(float(line[:-1]))
+    else:
+        zFile = open(z_file,'w')
+        if data_array is None: data_array = retrieve()
+        for R in calculate_displacements(data_array):
+            Rt = np.dot(R,t0) * t0 # norm(t0) == 1
+            z = np.linalg.norm(Rt)
+            Z.append(z )
+            zFile.write(str(z)+'\n')
 
-        tR = (np.dot(R,t_init)/np.linalg.norm(t_init)**2. ) * t_init
-        Z.append(np.linalg.norm(tR) )
+    zFile.close()
 
-    return Z
+    import matplotlib.pyplot as plt
+    binContents, bins  = np.histogram(Z,bins= 100,range=(0,L),density=True)
+    A = list() ; Z = list()
+    for i in range(len(bins[:-1])) :
+        if binContents[i] != 0:
+            Z.append(bins[i])
+            A.append(-np.log(binContents[i]))
 
-# calculate net difference in tangent vectors
-dT = trajectory[-1][-1] - trajectory[-1][0]
+    # shift windowed curves so they are continuous
+    j = 0
+    delta = dict()
+    delta[j] = 0.
+    for i in range(len(Z)):
+        if Z[i] > z_window_edges[j]:
+            j += 1
+            A[i-1] = A[i-2]
+            delta[j] = A[i] - A[i-1]
+        A[i] -= delta[j]
 
-def free_energy():
-    FE = - Ldx * (1./dx) * np.log(np.sinh(1./dx) )
-    return FE
+    return Z,A
 
-def mf_energy():
-    return 1./2 * (1./L) * np.linalg.norm(dT) ** 2.
+def calculate_horizon_dist(data_array):
+    t_init = t0
+    RP = list()
+    if os.path.isfile(rp_file):
+        rpFile = open(rp_file,'r')
+        for line in rpFile.readlines():
+            RP.append(float(line[:-1]))
+    else:
+        rpFile = open(rp_file,'w')
+        if data_array is None: data_array = retrieve()
+        for R in calculate_displacements(data_array):
+            z = np.dot(R,t_init)  * t_init
+            rp = np.linalg.norm(R - z)
+            RP.append(rp)
+            rpFile.write(str(rp) + '\n')
 
-#_R = calculate_displacements()
-#_T = (np.dot(_T,_R)/np.linalg.norm(_R)**2.) * _R
-#print("in-plane displacement: ", _R)
-#F = free_energy()
-#print("free energy: ", F)
-Z  = alt_calculate_height_dist()
+    rpFile.close()
 
-# convert from frequency distribution to probability dist
+    binContents, bins  = np.histogram(RP,bins= 100,range=(0,L),density=True)
+    A = list() ; RP = list()
+    for i in range(len(bins[:-1])) :
+        if binContents[i] != 0:
+            RP.append(bins[i])
+            A.append(-np.log(binContents[i]))
 
+    # shift windowed curves so they are continuous
+    j = 0
+    delta = dict()
+    delta[j] = 0.
+    for i in range(len(RP)):
+        if RP[i] > rp_window_edges[j]:
+            j += 1
+            A[i-1] = A[i-2]
+            delta[j] = A[i] - A[i-1]
+        A[i] -= delta[j]
+
+    return RP,A
+
+'''
+F_rp = calculate_horizon_dist(data_array)
 import matplotlib.pyplot as plt
-binContents, bins  = np.histogram(Z,bins= 100,range=(0,L),density=True)
-A = list() ; Z = list()
-for i in range(len(bins[:-1])) :
-    if binContents[i] != 0:
-        Z.append(bins[i])
-        A.append(-np.log(binContents[i]))
-plt.plot(Z,A)
+plt.plot(F_rp[0],F_rp[1],'b')
+plt.xlabel(r'$R_{\perp}$')
+plt.ylabel(r'$\beta F(R_{\perp})$ ')
+plt.title('Free energy' )
+#plt.savefig('rp_dist.png')
+plt.show()
+'''
+
+
+
+F_z = calculate_height_dist(data_array)
+import matplotlib.pyplot as plt
+plt.plot(F_z[0],F_z[1],'b-.')
+#plt.savefig('z_dist.png')
+#plt.vlines(window_edges,min(A),max(A))
 plt.title('Free energy')
 plt.xlabel(r'$z$')
 plt.ylabel(r'$\beta F(z)$')
-plt.savefig('z_dist.png')
 plt.show()
 
 

@@ -1,67 +1,47 @@
 import numpy as np
-from parameters import dx
+import parameters as par
 
-class actin_filament:
+def perturb(t,j):
 
-    def __init__(self,x,dx):
+    t_old = np.copy(t[j] )
+    random_vec = np.random.randn(3)
+    t[j] = t[j] +  random_vec
+    t[j] = t[j] / np.linalg.norm(t[j])
 
-        self.x = x
-        self.t = np.array([0,0,1])
-        self.t_old = np.copy(self.t)
-        dx = dx
+    return t, t_old
 
-    def perturb(self,vec):
-        self.t_old = np.copy(self.t )
-        self.t = self.t +  vec
-        self.t = self.t / np.linalg.norm(self.t)
-
-    def revert(self):
-        self.t = self.t_old
-
-    def shift(self,x,t):
-        self.x = x + t*dx
-
-    def rotate(self,phi):
-
-        R = np.array([[1,0,0],[0,np.cos(phi),-np.sin(phi)],[0,np.sin(phi),np.cos(phi)]])
-        self.t = np.dot(R,self.t)
-
-
-def update(A, index):
-
-    for i in range(index+1,len(A)):
-
-        A[i].shift(A[i-1].x,A[i-1].t)
-
-def deltaE(A,index) :
+def deltaE(t,t_old,index) :
 
     E_old = 0.
     E_new = 0.
 
-    if index + 1 != len(A):
-        E_old -= 1./dx * np.dot(A[index+1].t,A[index].t_old)
-        E_new -= 1./dx * np.dot(A[index+1].t,A[index].t)
+    if index + 1 != par.num_actins:
+        E_old -= 1./par.dx * np.dot(t[index+1],t_old)
+        E_new -= 1./par.dx * np.dot(t[index+1],t[index])
 
     if index != 0:
-        E_old -= 1./dx * np.dot(A[index-1].t,A[index].t_old)
-        E_new -= 1./dx * np.dot(A[index-1].t,A[index].t)
+        E_old -= 1./par.dx * np.dot(t[index-1],t_old)
+        E_new -= 1./par.dx * np.dot(t[index-1],t[index])
 
 
     return E_new - E_old
 
-def calculate_z(A0,A):
-    z = 0
-    N = len(A)
-    for i in range(N):
-        scalar_projection = np.dot(A[i].t,A0[i].t) / np.linalg.norm(A0[i].t)**2.
-        proj = scalar_projection * A0[i].t
-        z += np.linalg.norm(proj) * dx
+def calculate_r_vec(t):
+    r_vec = np.zeros(t[0].shape)
+    for j in range(par.num_actins):
+        r_vec += t[j] * par.dx
+    return r_vec
+
+def calculate_z(t):
+    r = calculate_r_vec(t)
+    z_vec = np.dot(r,par.t0) * par.t0  # norm(t0) == 1 so no division needed
+    z = np.linalg.norm(z_vec)
     return z
 
-def deltaE_z_bias(A0,A,index,window):
-    dE = deltaE(A,index)
+def deltaE_z_bias(t,t_old,index,window):
+    dE = deltaE(t,t_old,index)
 
-    z = calculate_z(A0,A)
+    z = calculate_z(t)
 
     if z < min(window) or z > max(window):
 
@@ -69,24 +49,133 @@ def deltaE_z_bias(A0,A,index,window):
 
     return dE
 
-def write_tangents(A,step,outfile):
+def calculate_rp(t):
+
+    r_vec = calculate_r_vec(t)
+    z_vec = np.dot(r_vec,par.t0) * par.t0
+    rp_vec = r_vec - z_vec
+    rp = np.linalg.norm(rp_vec)
+    return rp
+
+def deltaE_rp_bias(t,t_old,index,window):
+    dE = deltaE(t,t_old,index)
+
+    rp = calculate_rp(t)
+
+    if rp < min(window) or rp > max(window):
+
+        dE = np.inf
+
+    return dE
+
+def adjust_z(t,window):
+    z = calculate_z(t)
+    window_mean = 0.5*sum(window)
+    w = max(window) - min(window)
+    target = window_mean + w/2. * np.random.uniform(-1,1)
+    tol = w/4.
+
+    while abs(z - target ) > tol :
+
+        random_index= np.random.choice(range(par.num_actins))
+        t,t_old = perturb(t,random_index)
+        #update(t,random_index)
+        z_new = calculate_z(t)
+        change = z_new - z
+
+        if z > target and change > 0:
+            t[random_index] = t_old
+            #update(t,random_index)
+            change = 0
+        if z < target and change < 0:
+            t[random_index] = t_old
+            #update(t,random_index)
+            change = 0
+
+        if change != 0 :
+            z = calculate_z(t)
+
+    return t
+
+def adjust_rp(t,window):
+    rp = calculate_rp(t)
+    window_mean = 0.5*sum(window)
+    w = max(window) - min(window)
+    target = window_mean + w/2. * np.random.uniform(-1,1)
+    tol = w/4.
+
+    while abs(rp - target ) > tol :
+        #print('adjusting...',rp,'target: ',target)
+
+        random_index= np.random.choice(range(par.num_actins))
+        t,t_old = perturb(t,random_index)
+        #update(t,random_index)
+        rp_new = calculate_rp(t)
+
+        change = rp_new - rp
+
+
+        if rp > target and change > 0:
+            t[random_index] = t_old
+            #update(t,random_index)
+            change = 0
+        if rp < target and change < 0:
+            t[random_index] = t_old
+            #update(t,random_index)
+            change = 0
+
+        if change != 0 :
+            rp = calculate_rp(t)
+
+    return t
+
+def write_tangents(t,step,outfile):
 
     outfile.write('step ' + str(step) +'\n')
-    for monomer in A:
+    for j in range(par.num_actins):
 
-        outfile.write('{0}\t{1}\t{2}\n'.format(monomer.t[0],monomer.t[1],monomer.t[2]) )
-
-    outfile.write('\n')
-
-def write_coordinates(A,step,outfile):
-
-    outfile.write('step' + str(step) + '\n')
-
-    for monomer in A:
-
-        outfile.write('{0}\t{1}\t{2}\n'.format(monomer.x[0],monomer.x[1],monomer.x[2]) )
+        outfile.write('{0}\t{1}\t{2}\n'.format(t[j][0],t[j][1],t[j][2]) )
 
     outfile.write('\n')
+
+def mc_step(t):
+
+        random_index= np.random.choice(range(par.num_actins))
+        #print(t[random_index].t)
+
+        t,t_old = perturb(t,random_index)
+        #print(t[random_index].t)
+
+        dE = delta_E(t,random_index)
+
+        if dE > 0:
+            if np.random.rand() > np.exp(-dE):
+                t[random_index] = t_old
+                return t
+
+        #update(t,random_index)
+        return t
+
+def umbrella_mc_step(t,window):
+
+        random_index= np.random.choice(range(par.num_actins))
+        #print(t[random_index].t)
+
+        t,t_old = perturb(t,random_index)
+        #print(t[random_index].t)
+
+        dE = deltaE_z_bias(t,t_old,random_index,window)
+
+        if dE > 0:
+            if np.random.rand() > np.exp(-dE):
+                t[random_index] = t_old
+                return
+
+
+        #update(t,random_index)
+
+#    return t
+
 
 
 
