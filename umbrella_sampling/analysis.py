@@ -10,7 +10,7 @@ def retrieve():
     for fname in window_files:
         if not os.path.isfile(fname): exit('Data file(s) missing!')
         data_files.append( open(fname,'r') )
-    data_array = [ list() for x in range(num_frames) ]
+    data_array = [ list() for x in range(total_frames) ]
     step = -1
     for infile in data_files:
 
@@ -33,18 +33,28 @@ def retrieve():
 
 
 #data_array =retrieve()
-#T = data_array[-1][-1]
-#Tp = T - np.dot(T,t0) * t0
+def calculate_Tp(data_array):
+
+    Tp = []
+    for t in data_array:
+
+        T = t[-1]
+        tp_vec = T - np.dot(T,t0)
+        tp= np.linalg.norm(tp_vec)
+        Tp.append(tp)
+
+    return Tp
+
 
 
 def calculate_displacements(data_array) :
     allR = []
-    for filament in data_array:
-        R = np.zeros(filament[0].shape)
+    for t in data_array:
+        R = np.zeros(t[0].shape)
 
-        for monomer in filament[:-1]:
+        for r in t[:-1]:
 
-            R += monomer
+            R += r
 
         allR.append(dx*R)
 
@@ -129,14 +139,19 @@ def calculate_horizon_dist(data_array):
 
     return RP,A
 
+'''
 F_rp = calculate_horizon_dist(data_array)
 import matplotlib.pyplot as plt
-plt.plot(F_rp[0],F_rp[1],'b-.')
+plt.plot(F_rp[0],F_rp[1],'b')
+plt.xlabel(r'$R_{\perp}$')
+plt.ylabel(r'$\beta F(R_{\perp})$ ')
+plt.title('Free energy' )
+#plt.savefig('rp_dist.png')
 plt.show()
-
-
-
 '''
+
+
+
 F_z = calculate_height_dist(data_array)
 import matplotlib.pyplot as plt
 plt.plot(F_z[0],F_z[1],'b-.')
@@ -146,5 +161,5 @@ plt.title('Free energy')
 plt.xlabel(r'$z$')
 plt.ylabel(r'$\beta F(z)$')
 plt.show()
-'''
+
 
