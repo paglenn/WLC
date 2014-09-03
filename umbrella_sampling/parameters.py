@@ -2,10 +2,9 @@
 
 numsteps = int(1e2)
 
-L = 0.25
 
-#dx = 0.002
-dx = 0.002
+L = 0.25 #Whitelam et al 2008
+dx = 0.002 # calculated from proteopedia data
 Ldx = int(L/dx)
 
 num_actins = N = Ldx + 1
