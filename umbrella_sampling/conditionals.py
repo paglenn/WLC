@@ -3,16 +3,17 @@ import os
 from parameters import *
 
 def calculate_TP():
+    TP = []
     if not os.path.isfile(tp_file):
         print("data file ",tp_file,"missing!")
         exit()
-    tpFile = open(tp_file,'w')
+    tpFile = open(tp_file,'r')
     for line in tpFile.readlines():
-        tp.append(float(line[:-1]))
+        TP.append(float(line[:-1]))
 
     tpFile.close()
 
-    return tp
+    return TP
 
 def calculate_RP():
     RP = [ ]
@@ -52,4 +53,13 @@ TP = calculate_TP()
 RP = calculate_RP()
 Z = calculate_Z()
 RPTP = calculate_RPTP(RP,TP)
+
+z_X_joint = np.histogramdd(np.vstack((Z,TP,RP,RPTP)).T,normed=True)[0]
+X_joint = np.histogramdd(np.vstack((TP,RP,RPTP)).T,normed=True)[0]
+print(z_X_joint.shape,X_joint.shape)
+#print(z_X_joint,X_joint)
+print(z_X_joint)
+#z_cond = z_X_joint/X_joint
+
+
 

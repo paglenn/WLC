@@ -2,7 +2,6 @@
 
 numsteps = int(1e2)
 
-#L = 0.5
 L = 0.25
 
 #dx = 0.002
