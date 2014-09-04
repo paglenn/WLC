@@ -31,8 +31,6 @@ def retrieve():
         infile.close()
     return data_array
 
-
-#data_array =retrieve()
 def calculate_Tp(data_array):
 
     Tp = []
@@ -51,13 +49,9 @@ def calculate_displacements(data_array) :
     allR = []
     for t in data_array:
         R = np.zeros(t[0].shape)
-
         for r in t[:-1]:
-
             R += r
-
         allR.append(dx*R)
-
     return allR
 
 
@@ -139,10 +133,30 @@ def calculate_horizon_dist(data_array):
 
     return RP,A
 
+def plot_cosines() :
+    cosFile = open(cos_file,'r')
+    cos = []
+    for line in cosFile.readlines():
+        cos.append(float(line[:-1]))
+    print np.mean(cos)
+    binContents,bins = np.histogram(cos,range=(-1,1),bins=100,density=True)
+    import matplotlib.pyplot as plt
+    plt.semilogy(bins[:-1],binContents,'b.')
+
+    x = np.linspace(0.95,1,100)
+    P = 1./dx * np.exp(x/dx) /(2.*np.sinh(1./dx))
+    plt.semilogy(x,P,'k')
+    plt.savefig('cos_dist.png')
+    plt.xlim(0,1)
+    #plt.show()
+    return
+
+plot_cosines()
+
 '''
 F_rp = calculate_horizon_dist(data_array)
 import matplotlib.pyplot as plt
-plt.plot(F_rp[0],F_rp[1],'b')
+plt.plot(F_rp[0],F_rp[1],'b-.')
 plt.xlabel(r'$R_{\perp}$')
 plt.ylabel(r'$\beta F(R_{\perp})$ ')
 plt.title('Free energy' )
@@ -152,14 +166,17 @@ plt.show()
 
 
 
+'''
 F_z = calculate_height_dist(data_array)
 import matplotlib.pyplot as plt
 plt.plot(F_z[0],F_z[1],'b-.')
-#plt.savefig('z_dist.png')
+plt.savefig('z_dist.png')
 #plt.vlines(window_edges,min(A),max(A))
 plt.title('Free energy')
 plt.xlabel(r'$z$')
 plt.ylabel(r'$\beta F(z)$')
 plt.show()
+'''
+
 
 
