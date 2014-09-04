@@ -26,7 +26,7 @@ num_windows = 15
 
 window_files = ["window_{0}.dat".format(i) for i in range(num_windows) ]
 
-num_passes = 1 # passes per window
+num_passes = 100 # passes per window
 
 total_frames = num_windows * num_passes * numsteps
 
@@ -40,10 +40,6 @@ z_window_edges = [ Z[1] for Z in z_windows]
 z_window_edges.reverse()
 
 z_file = 'zvals.dat'
-
-rp_windows = [(i/num_windows,(1+i)/num_windows) for i in range(num_windows) ]
-
-rp_window_edges = [ rp[1] for rp in rp_windows]
 
 rp_file = 'rpvals.dat'
 
