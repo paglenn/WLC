@@ -31,8 +31,6 @@ def retrieve():
         infile.close()
     return data_array
 
-
-#data_array =retrieve()
 def calculate_Tp(data_array):
 
     Tp = []
@@ -51,13 +49,9 @@ def calculate_displacements(data_array) :
     allR = []
     for t in data_array:
         R = np.zeros(t[0].shape)
-
         for r in t[:-1]:
-
             R += r
-
         allR.append(dx*R)
-
     return allR
 
 
@@ -138,6 +132,24 @@ def calculate_horizon_dist(data_array):
         A[i] -= delta[j]
 
     return RP,A
+
+def plot_cosines() :
+    cosFile = open(cos_file,'r')
+    cos = []
+    for line in cosFile.readlines():
+        cos.append(float(line[:-1]))
+    binContents,bins = np.histogram(cos,bins=100,density=True)
+    import matplotlib.pyplot as plt
+    plt.plot(bins[:-1],binContents,'b.')
+
+    #x = np.linspace(0.95,1,100)
+    #P = 1./dx * np.exp(x/dx) /np.sinh(1./dx)
+    #plt.semilogy(x,P,'k')
+    plt.show()
+    return
+
+plot_cosines()
+
 '''
 F_rp = calculate_horizon_dist(data_array)
 import matplotlib.pyplot as plt

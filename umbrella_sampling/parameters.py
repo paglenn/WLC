@@ -1,9 +1,10 @@
 # simulation parameters
+# note: l_p is the persistence length (~37 um for actin rod )
 
-numsteps = int(1e4)
+numsteps = int(5e3)
 
-L = 0.25 #Whitelam et al 2008
-dx = 0.002 # calculated from proteopedia data
+L = 0.25 #(units of l_p) Whitelam et al 2008
+dx = 0.002 # (units of l_p) calculated from proteopedia data
 Ldx = int(L/dx)
 
 num_actins = N = Ldx + 1
@@ -27,11 +28,12 @@ num_windows = 15
 
 window_files = ["window_{0}.dat".format(i) for i in range(num_windows) ]
 
-num_passes = 50
+num_passes = 50 # passes per window
 
 total_frames = num_windows * num_passes * numsteps
 
-z_windows = [(i*L/num_windows,(1.+i)*L/num_windows) for i in range(num_windows) ]
+# natural units for z and rp are those of L/l_p
+z_windows = [(i/num_windows,(1.+i)/num_windows) for i in range(num_windows) ]
 
 z_windows.reverse()
 
@@ -41,7 +43,7 @@ z_window_edges.reverse()
 
 z_file = 'zvals.dat'
 
-rp_windows = [(i*L/num_windows,(1+i)*L/num_windows) for i in range(num_windows) ]
+rp_windows = [(i/num_windows,(1+i)/num_windows) for i in range(num_windows) ]
 
 rp_window_edges = [ rp[1] for rp in rp_windows]
 

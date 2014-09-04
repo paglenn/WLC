@@ -10,6 +10,7 @@ def perturb(t,j):
 
     return t, t_old
 
+
 def deltaE(t,t_old,index) :
 
     E_old = 0.
@@ -45,7 +46,7 @@ def calculate_z(t):
     r = calculate_r_vec(t)
     z_vec = np.dot(r,par.t0) * par.t0  # norm(t0) == 1 so no division needed
     z = np.linalg.norm(z_vec)
-    return z
+    return z/par.L
 
 def deltaE_z_bias(t,t_old,index,window):
     dE = deltaE(t,t_old,index)
@@ -64,7 +65,7 @@ def calculate_rp(t):
     z_vec = np.dot(r_vec,par.t0) * par.t0
     rp_vec = r_vec - z_vec
     rp = np.linalg.norm(rp_vec)
-    return rp
+    return rp/par.L
 
 def calculate_rptp(t):
 
@@ -189,12 +190,12 @@ def umbrella_mc_step(t,window):
     if dE > 0:
         if np.random.rand() > np.exp(-dE):
             t[random_index] = t_old
-            return
+            return False
 
 
     #update(t,random_index)
 
-    return t
+    return True
 
 
 
