@@ -3,9 +3,9 @@
 
 numsteps = int(5e5)
 
-L = 0.25 #(units of l_p) Whitelam et al 2008
-dx = 0.005 # (units of l_p) calculated from proteopedia data
-num_actins = N = int(L/dx)
+dx = 0.005 # (units of l_p)
+num_actins = N = 100
+L = N * dx
 
 import numpy as np
 
