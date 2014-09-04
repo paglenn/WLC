@@ -30,7 +30,7 @@ def deltaE(t,t_old,index) :
 def calculate_r_vec(t):
     r_vec = np.zeros(t[0].shape)
     for j in range(par.num_actins):
-        r_vec += t[j] * par.dx
+        r_vec = r_vec +  t[j] * par.dx
     return r_vec
 
 def sum_cosines(t):
@@ -113,7 +113,7 @@ def adjust_z(t,window):
             change = 0
 
         if change != 0 :
-            z = calculate_z(t)
+            z = z_new
 
     return t
 
@@ -146,7 +146,7 @@ def adjust_rp(t,window):
             change = 0
 
         if change != 0 :
-            rp = calculate_rp(t)
+            rp = rp_new
 
     return t
 

@@ -138,14 +138,16 @@ def plot_cosines() :
     cos = []
     for line in cosFile.readlines():
         cos.append(float(line[:-1]))
-    binContents,bins = np.histogram(cos,bins=100,density=True)
+    print np.mean(cos)
+    binContents,bins = np.histogram(cos,range=(-1,1),bins=100,density=True)
     import matplotlib.pyplot as plt
-    plt.plot(bins[:-1],binContents,'b.')
+    plt.semilogy(bins[:-1],binContents,'b.')
 
-    #x = np.linspace(0.95,1,100)
-    #P = 1./dx * np.exp(x/dx) /np.sinh(1./dx)
-    #plt.semilogy(x,P,'k')
-    plt.show()
+    x = np.linspace(0.95,1,100)
+    P = 1./dx * np.exp(x/dx) /(2.*np.sinh(1./dx))
+    plt.semilogy(x,P,'k')
+    plt.savefig('cos_dist.png')
+    #plt.show()
     return
 
 plot_cosines()

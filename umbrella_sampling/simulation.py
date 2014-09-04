@@ -58,7 +58,8 @@ for w in z_windows:
                 #cosFile.write("{0}\n".format(sum_cosines(t)/num_actins)  )
                 for k in range(num_actins- 1):
                     cosFile.write("{0:.8f}\n".format( np.dot(t[k],t[k+1]) ) )
-                num_acc += 1
+                if acc:
+                    num_acc += 1
 
             #write_tangents(t,j,out[w])
 
@@ -71,8 +72,8 @@ for dataFile in out.values():
 '''
 
 
-progressFile.write("program finished!!")
-progressFile.write("{0}\taccepted moves ".format(num_acc))
+progressFile.write("program finished!!\n")
+progressFile.write("{0}\taccepted moves\n".format(num_acc))
 progressFile.close()
 rpFile.close()
 zFile.close()
