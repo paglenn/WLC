@@ -2,7 +2,7 @@
 # single actin filament (WLC) monte carlo routine
 # umbrella sampling simulation adapted from that for Ising model
 import numpy as np
-from actin import *
+from montecarlo import *
 from parameters import *
 
 # choose initial configuration to be along z-axis
@@ -19,6 +19,7 @@ rpFile = open(rp_file,'w')
 tpFile = open(tp_file,'w')
 rptpFile = open(rptp_file,'w')
 progressFile = open("progress.out",'w')
+cosFile = open(cos_file,'w')
 
 for w in z_windows:
     t = [np.copy(t0) for x in range(num_actins) ]
@@ -38,17 +39,19 @@ for w in z_windows:
         rpFile.write(   "{0}\n".format(calculate_rp(t)/L )  )
         tpFile.write(   "{0}\n".format(tp)                  )
         rptpFile.write( "{0}\n".format(calculate_rptp(t) )  )
+        cosFile.write("{0}\n".format(sum_cosines(t)      )  )
 
         for j in range(1,numsteps+1):
 
             umbrella_mc_step(t,w)
 
-            progressFile.write('window\t{0}\tpass\t{1}\trun\t{2}'.format(w,itr,j))
+            progressFile.write('window\t{0}\tpass\t{1}\trun\t{2}\n'.format(w,itr,j))
             zFile.write(    "{0}\n".format(calculate_z(t)/L  )  )
             rpFile.write(   "{0}\n".format(calculate_rp(t)/L )  )
-            tp = np.linalg.norm(t[-1] - np.dot(t[-1],t0)*t0 )
+            tp = np.linalg.norm(t[-1] - np.dot(t[-1],t0)*t0     )
             tpFile.write(   "{0}\n".format(tp)                  )
             rptpFile.write( "{0}\n".format(calculate_rptp(t) )  )
+            cosFile.write("{0}\n".format(sum_cosines(t)      )  )
 
             #write_tangents(t,j,out[w])
 
@@ -66,3 +69,4 @@ rpFile.close()
 zFile.close()
 rptpFile.close()
 tpFile.close()
+cosFile.close()

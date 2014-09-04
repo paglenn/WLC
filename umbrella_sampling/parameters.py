@@ -1,15 +1,12 @@
 # simulation parameters
 
-numsteps = int(1e2)
-
+numsteps = int(1e4)
 
 L = 0.25 #Whitelam et al 2008
 dx = 0.002 # calculated from proteopedia data
 Ldx = int(L/dx)
 
 num_actins = N = Ldx + 1
-
-data_file = 'output.dat'
 
 import numpy as np
 
@@ -22,10 +19,7 @@ for j in range(num_actins):
     elif j+1 == num_actins : nbr[j] = [j-1]
     else: nbr[j] = [j+1,j-1]
 
-
-
-
-
+cos_file = 'cos.dat'
 # for umbrella sampling
 umbrella_bias = True
 
@@ -33,11 +27,11 @@ num_windows = 15
 
 window_files = ["window_{0}.dat".format(i) for i in range(num_windows) ]
 
-num_passes = 500
+num_passes = 50
 
 total_frames = num_windows * num_passes * numsteps
 
-z_windows = [(i*L/num_windows,(1+i)*L/num_windows) for i in range(num_windows) ]
+z_windows = [(i*L/num_windows,(1.+i)*L/num_windows) for i in range(num_windows) ]
 
 z_windows.reverse()
 

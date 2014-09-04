@@ -44,70 +44,52 @@ for t in data_array:
 
 
 # compute P( cos \theta  )
-import matplotlib.pyplot as plt
-cos = []
-for t in data_array:
 
-    for i in range(num_actins - 1) :
+def compute_cos(data_array):
+    import matplotlib.pyplot as plt
+    cos = []
+    for t in data_array:
 
-        cos.append( np.dot(t[i],t[i+1]) )
+        for i in range(num_actins - 1) :
 
-x = np.linspace(0.8,1,100)
-P = 1./dx * np.exp(x/dx) / (2*np.sinh(1./dx) )
-plt.subplot(121)
-plt.hist(cos,bins=100,range=(0.8,1),normed=True,histtype='step')
-plt.plot(x,P,'k',lw=1.2)
-plt.xlabel(r'$\cos \theta $')
-plt.ylabel(r'$P(\cos \theta ) $')
-plt.subplot(122)
-plt.hist(cos,bins=100,range=(0.8,1),normed=True,histtype='step',log=True)
-plt.semilogy(x,P,'k',lw=1.2)
-plt.xlabel('log scale')
-plt.show()
-'''
-# compute correlator
-R = range(0,num_actins//10)
-G = [0 for r in R ]
-num_samples = list(G)
-for t in data_array:
+            cos.append( np.dot(t[i],t[i+1]) )
+
+    x = np.linspace(0.8,1,100)
+    P = 1./dx * np.exp(x/dx) / (2*np.sinh(1./dx) )
+    plt.hist(cos,bins=100,range=(0.8,1),normed=True,histtype='step',log=True)
+    plt.semilogy(x,P,'k',lw=1.2)
+    plt.ylabel('semilog cosine dist')
+    plt.xlabel(r'$\cos \theta $')
+    plt.ylabel(r'$P(\cos \theta ) $')
+    plt.savefig('cos.png')
+
+def compute_corr:
+    # compute correlator
+    R = range(0,num_actins//10)
+    G = [0 for r in R ]
+    num_samples = list(G)
+    for t in data_array:
+
+        for r in R:
+
+            for i in range(num_actins - r):
+
+                num_samples[r] += 1
+                G[r] += np.dot(t[i],t[i+r])
 
     for r in R:
 
-        for i in range(num_actins - r):
+        if num_samples[r] != 0:
 
-            num_samples[r] += 1
-            G[r] += np.dot(t[i],t[i+r])
+            G[r] = G[r] / num_samples[r]
 
+    # rescale R
+    R = np.array( [dx * r for r in R ] )
 
-for r in R:
-
-    if num_samples[r] != 0:
-
-        G[r] = G[r] / num_samples[r]
-
-# rescale R
-R = [dx * r for r in R ]
-R = np.array(R)
-G = np.array(G)
-
-
-# model prediction: G(s) ~ exp(-s/l_p)
-expR = np.exp(-R)
-plt.subplot(223)
-plt.plot(np.array(R),G,'b.')
-plt.plot(R, expR,'k',lw=1.5 )
-plt.xlabel(r's/$l_p$')
-plt.ylabel('G(s)')
-#plt.savefig('correlator.png')
-plt.subplot(224)
-plt.semilogy(np.array(R),G,'b.')
-plt.semilogy(R, expR,'k',lw=1.5 )
-plt.xlabel('(semilog scale)')
-#plt.ylabel('G(s) (log scale)')
-
-plt.savefig('results.png')
-#plt.show()
-#plot_correlator('log')
-
-
-'''
+    # model prediction: G(s) ~ exp(-s/l_p)
+    expR = np.exp(-R)
+    plt.semilogy(R,np.array(G),'b.')
+    plt.semilogy(R, expR,'k',lw=1.5 )
+    plt.xlabel(r's/$l_p$')
+    plt.ylabel('G(s) ')
+    plt.savefig('corr.png')
