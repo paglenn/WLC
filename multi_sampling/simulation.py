@@ -22,8 +22,10 @@ progressFile = open("progress.out",'w')
 cosFile = open(cos_file,'w')
 
 num_acc = 0
-for w in z_windows:
+for wz in z_windows:
     t = [np.copy(t0) for x in range(num_actins) ]
+
+
     ################################
     # Passes over each window
     for itr in range(num_passes):
@@ -31,7 +33,7 @@ for w in z_windows:
 
         ##############################################
         # Adjust horizontal displacement to target value
-        t = adjust_z(t,w)
+        joint_adjust_z_rp(t,wz)
         tp = np.linalg.norm(t[-1] - np.dot(t[-1],t0)*t0 )
         #t = adjust_rp(t,w)
         #write_tangents(t,0,out[w])
@@ -46,11 +48,9 @@ for w in z_windows:
 
         for j in range(1,numsteps+1):
 
-            # acc = mc_step(t)
-            acc = umbrella_mc_step(t,w)
+            acc = umbrella_mc_step(t,wz)
 
-
-            progressFile.write('window\t{0}/{1}\tpass\t{1}\trun\t{2}\n'.format(z_windows.index(w),num_windows,itr,j))
+            progressFile.write('window\t{0}/{1}\tpass\t{1}\trun\t{2}\n'.format(z_windows.index(wz),num_windows,itr,j))
             zFile.write(    "{0}\n".format(calculate_z(t)  )  )
             rpFile.write(   "{0}\n".format(calculate_rp(t) )  )
             tp = np.linalg.norm(t[-1] - np.dot(t[-1],t0)*t0     )
@@ -62,7 +62,7 @@ for w in z_windows:
             if acc:
                 num_acc += 1
 
-            #write_tangents(t,j,out[w])
+        #write_tangents(t,j,out[w])
 
 # close data files
 
