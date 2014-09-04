@@ -26,7 +26,7 @@ num_windows = 15
 
 window_files = ["window_{0}.dat".format(i) for i in range(num_windows) ]
 
-num_passes = 1 # passes per window
+num_passes = 500 # passes per window
 
 total_frames = num_windows * num_passes * numsteps
 

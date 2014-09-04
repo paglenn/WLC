@@ -46,18 +46,19 @@ for w in z_windows:
 
         for j in range(1,numsteps+1):
 
+            # acc = mc_step(t)
             acc = umbrella_mc_step(t,w)
 
-            if acc :
-                progressFile.write('window\t{0}/{1}\tpass\t{1}\trun\t{2}\n'.format(z_windows.index(w),num_windows,itr,j))
-                zFile.write(    "{0}\n".format(calculate_z(t)  )  )
-                rpFile.write(   "{0}\n".format(calculate_rp(t) )  )
-                tp = np.linalg.norm(t[-1] - np.dot(t[-1],t0)*t0     )
-                tpFile.write(   "{0}\n".format(tp)                  )
-                rptpFile.write( "{0}\n".format(calculate_rptp(t) )  )
-                #cosFile.write("{0}\n".format(sum_cosines(t)/num_actins)  )
-                for k in range(num_actins- 1):
-                    cosFile.write("{0:.8f}\n".format( np.dot(t[k],t[k+1]) ) )
+            progressFile.write('window\t{0}/{1}\tpass\t{1}\trun\t{2}\n'.format(z_windows.index(w),num_windows,itr,j))
+            zFile.write(    "{0}\n".format(calculate_z(t)  )  )
+            rpFile.write(   "{0}\n".format(calculate_rp(t) )  )
+            tp = np.linalg.norm(t[-1] - np.dot(t[-1],t0)*t0     )
+            tpFile.write(   "{0}\n".format(tp)                  )
+            rptpFile.write( "{0}\n".format(calculate_rptp(t) )  )
+            #cosFile.write("{0}\n".format(sum_cosines(t)/num_actins)  )
+            for k in range(num_actins- 1):
+                cosFile.write("{0:.8f}\n".format( np.dot(t[k],t[k+1]) ) )
+            if acc:
                 num_acc += 1
 
             #write_tangents(t,j,out[w])
