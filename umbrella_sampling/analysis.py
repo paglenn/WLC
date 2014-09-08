@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from parameters import *
-
+import math
 
 data_array = None
 
@@ -74,26 +74,45 @@ def calculate_height_dist(data_array):
 
     zFile.close()
 
+    bins = [ list() for j in range(num_windows) ]
+    binContents = [list() for j in range(num_windows) ]
+
     import matplotlib.pyplot as plt
-    binContents, bins  = np.histogram(Z,bins= 100,range=(0,L),density=True)
-    A = list() ; Z = list()
-    for i in range(len(bins[:-1])) :
-        if binContents[i] != 0:
-            Z.append(bins[i])
-            A.append(-np.log(binContents[i]))
+    for j in range(num_windows):
+        rng = (j*linesPerWindow,(j+1)*linesPerWindow)
 
-    # shift windowed curves so they are continuous
-    j = 0
-    delta = dict()
-    delta[j] = 0.
-    for i in range(len(Z)):
-        if Z[i] > z_window_edges[j]:
-            j += 1
-            A[i-1] = A[i-2]
-            delta[j] = A[i] - A[i-1]
-        A[i] -= delta[j]
-
-    return Z,A
+        binContents[j],bins[j] = np.histogram(Z[rng[0]:rng[1]],bins=binsPerWindow,range=z_windows[j])
+        print binContents[j]
+        #plt.hist(Z,bins=binsPerWindow+1,range=z_windows[j],histtype='bar')
+    quit()
+    for j in range(num_windows-1):
+        multiplier = 1.*binContents[j][-1]/binContents[j+1][0]
+        for k in range(len(binContents[j+1])):
+            binContents[j+1][k] *= multiplier
+        print binContents[j]
+        #plt.plot(bins[j][:-1],binContents[j])
+    #plt.show()
+    quit()
+    for j in range(num_windows):
+        for k in range(len(bins[j])-1):
+            bins[j][k] = (bins[j][k+1] + bins[j][k])/2.
+        bins[j] = np.delete(bins[j],bins[j][-1])
+    for j in range(num_windows):
+         print bins[j]
+    maxFreq = max([max(x) for x in binContents])
+    #print maxFreq
+    A = list()
+    Z = list()
+    for j in range(num_windows):
+        #print binContents[j]
+        for k in range(binContents[j].shape[0]):
+            if binContents[j][k] != 0:
+                Z.append(bins[j][k])
+                A.append(-math.log(binContents[j][k]/float(maxFreq)))
+    print Z ,'\n', A
+    plt.plot(Z,A)
+    plt.show()
+    quit()
 
 def calculate_horizon_dist(data_array):
     t_init = t0
@@ -127,7 +146,7 @@ def calculate_horizon_dist(data_array):
     for i in range(len(RP)):
         if RP[i] > rp_window_edges[j]:
             j += 1
-            A[i-1] = A[i-2]
+            #A[i-1] = A[i-2]
             delta[j] = A[i] - A[i-1]
         A[i] -= delta[j]
 
@@ -150,7 +169,7 @@ def plot_cosines() :
     #plt.show()
     return
 
-plot_cosines()
+#plot_cosines()
 
 '''
 F_rp = calculate_horizon_dist(data_array)
@@ -164,7 +183,7 @@ plt.show()
 '''
 
 
-
+calculate_height_dist(data_array)
 '''
 F_z = calculate_height_dist(data_array)
 import matplotlib.pyplot as plt
@@ -176,6 +195,5 @@ plt.xlabel(r'$z$')
 plt.ylabel(r'$\beta F(z)$')
 plt.show()
 '''
-
 
 

@@ -1,5 +1,6 @@
 import numpy as np
 import parameters as par
+from numba import autojit
 
 def perturb(t,j):
 
@@ -27,12 +28,14 @@ def deltaE(t,t_old,index) :
 
     return E_new - E_old
 
+@autojit
 def calculate_r_vec(t):
     r_vec = np.zeros(t[0].shape)
     for j in range(par.num_actins):
         r_vec = r_vec +  t[j] * par.dx
     return r_vec
 
+@autojit
 def sum_cosines(t):
 
     s = 0.
@@ -42,6 +45,7 @@ def sum_cosines(t):
 
     return s
 
+@autojit
 def calculate_z(t):
     r = calculate_r_vec(t)
     z_vec = np.dot(r,par.t0) * par.t0  # norm(t0) == 1 so no division needed
@@ -59,6 +63,7 @@ def deltaE_z_bias(t,t_old,index,window):
 
     return dE
 
+@autojit
 def calculate_rp(t):
 
     r_vec = calculate_r_vec(t)
@@ -67,6 +72,7 @@ def calculate_rp(t):
     rp = np.linalg.norm(rp_vec)
     return rp/par.L
 
+@autojit
 def calculate_rptp(t):
 
     r_vec = calculate_r_vec(t)
@@ -76,6 +82,7 @@ def calculate_rptp(t):
     tp = tN - np.dot(tN, par.t0) * par.t0
     rptp = np.dot(tp,rp_vec)
     return rptp
+
 
 def deltaE_rp_bias(t,t_old,index,window):
     dE = deltaE(t,t_old,index)
@@ -93,7 +100,7 @@ def adjust_z(t,window):
     window_mean = 0.5*sum(window)
     w = max(window) - min(window)
     target = window_mean + w/2. * np.random.uniform(-1,1)
-    tol = w/4.
+    tol = w/16.
 
     while abs(z - target ) > tol :
 
@@ -116,7 +123,6 @@ def adjust_z(t,window):
             z = z_new
 
     return t
-
 
 def adjust_rp(t,window):
     rp = calculate_rp(t)
@@ -196,8 +202,6 @@ def umbrella_mc_step(t,window):
     #update(t,random_index)
 
     return True
-
-
 
 
 

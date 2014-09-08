@@ -1,7 +1,7 @@
 # simulation parameters
 # note: l_p is the persistence length (~37 um for actin rod )
 
-numsteps = int(1e4)
+numsteps = int(1e3)
 
 dx = 0.0027 # (units of l_p -- from "Actin Based Motility" )
 num_actins = N = 100
@@ -22,23 +22,30 @@ cos_file = 'cos.dat' #saves time for checking fidelity of simulation
 
 # for umbrella sampling
 umbrella_bias = True
+num_passes = 500 # passes per window
+num_windows = 5
+num_bins = 50 # each window will have num_bins/num_windows+1 bins
+binWidth = 1./ num_bins
+overlap = binWidth
+z_windows = [[1.*i/num_windows,(i+1)/float(num_windows)+overlap] for i in range(num_windows)]
+linesPerWindow = num_passes*(numsteps+1)
 
-num_windows = 15
+z_windows[-1][1] -= overlap
+binsPerWindow= num_bins/float(num_windows)+1
+# determine z windows
 
 window_files = ["window_{0}.dat".format(i) for i in range(num_windows) ]
 
-num_passes = 500 # passes per window
+
 
 total_frames = num_windows * num_passes * numsteps
 
 # natural units for z and rp are those of L/l_p
-z_windows = [(i/num_windows,(1.+i)/num_windows) for i in range(num_windows) ]
-
-z_windows.reverse() # easier to start from higher z
+# z_windows.reverse() # easier to start from higher z
 
 z_window_edges = [ Z[1] for Z in z_windows]
 
-z_window_edges.reverse() # for matching in analysis/free energy computation
+#z_window_edges.reverse() # for matching in analysis/free energy computation
 
 z_file = 'zvals.dat'
 
