@@ -1,3 +1,3 @@
 actin
 =====
-For my first rotation in Biophysics PhD 
+wonderful filaments (MCMC)
