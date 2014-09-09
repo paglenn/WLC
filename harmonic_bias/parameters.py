@@ -4,7 +4,7 @@
 numsteps = int(1e3)
 
 #dx = 0.0027 # (units of l_p -- from "Actin Based Motility" )
-dx = 0.2 # better for testing
+dx = 0.02 # better for testing
 num_actins = N = 100
 L = N * dx
 
@@ -17,11 +17,11 @@ for j in range(num_actins):
 
 
 # for umbrella sampling
-num_passes = 10 # passes per window
-num_windows = 10
+num_passes = 200 # passes per window
+num_windows = 20
 num_bins = 200 # each window will have num_bins/num_windows+1 bins
 binWidth = 1./ num_bins
-overlap = binWidth
+overlap = 3*binWidth
 z_windows = [[1.*i/num_windows,(i+1)/float(num_windows)+overlap] for i in range(num_windows)]
 linesPerWindow = num_passes*(numsteps+1)
 K = 100 # umbrella sampling harmonic force constant

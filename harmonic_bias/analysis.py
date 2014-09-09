@@ -21,7 +21,6 @@ def calculate_height_dist(data_array):
         exit('%s missing!'%z_file)
 
     zFile.close()
-    print ctr , total_frames; quit()
 
     bins = [ list() for j in range(num_windows) ]
     binContents = [list() for j in range(num_windows) ]
@@ -32,12 +31,8 @@ def calculate_height_dist(data_array):
 
         binContents[j],bins[j] = np.histogram(Z[rng[0]:rng[1]],bins=binsPerWindow,range=z_windows[j])
         #plt.semilogy(bins[j][:-1],binContents[j])
-        print binContents[j]
-        #plt.hist(Z,bins=binsPerWindow+1,range=z_windows[j],histtype='step')
-    #plt.show()
-    #quit()
-    for j in range(num_windows):
-         print binContents[j]
+        plt.hist(Z,bins=binsPerWindow+1,range=z_windows[j],histtype='step')
+    plt.show()
     quit()
     logP = [ [] for x in range(num_windows) ]
     for j in range(num_windows):

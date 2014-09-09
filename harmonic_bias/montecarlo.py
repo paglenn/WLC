@@ -1,6 +1,8 @@
 import numpy as np
 import parameters as par
 from numba import autojit
+import math
+import random
 
 def perturb(t,j):
 
@@ -149,7 +151,7 @@ def umbrella_mc_step(t,w_index):
     dE = deltaE_bias(t,t_old,random_index,par.window_min[w_index])
 
     if dE > 0:
-        if np.random.rand() > np.exp(-dE):
+        if random.uniform(0,1) > math.exp(-dE):
             t[random_index] = t_old
             return False
 

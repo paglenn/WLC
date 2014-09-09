@@ -9,11 +9,11 @@ import os
 # choose initial configuration to be along z-axis
 
 # write initial configuration to file
-# rpFile = open(rp_file,'w')
 rpFile = open(rp_file,'w')
 tpFile = open(tp_file,'w')
 rptpFile = open(rptp_file,'w')
 progressFile = open("progress.out",'w')
+zFile = open(z_file,'w')
 #cosFile = open(cos_file,'w')
 windowFiles = dict(enumerate(open(f,'w') for f in window_files))
 
@@ -32,7 +32,9 @@ for wi in range(num_windows):
         t = adjust_z(t,w)
         tp = np.linalg.norm(t[-1] - np.dot(t[-1],t0)*t0 )
 
-        windowFiles[wi].write(    "{0}\n".format(calculate_z(t)  )  )
+        z = calculate_z(t)
+        zFile.write('%f\n'%z)
+        windowFiles[wi].write("{0}\t{1}\n".format(j,z )  )
         rpFile.write(   "{0}\n".format(calculate_rp(t) )  )
         tpFile.write(   "{0}\n".format(tp)                  )
         rptpFile.write( "{0}\n".format(calculate_rptp(t) )  )
@@ -45,7 +47,10 @@ for wi in range(num_windows):
 
             progressVars = [wi+1,num_windows,itr,j]
             progressFile.write('window\t{0}/{1}\tpass\t{2}\trun\t{3}\n'.format(*progressVars))
-            windowFiles[wi].write(    "{0}\n".format(calculate_z(t)  )  )
+
+            z = calculate_z(t)
+            zFile.write('%f\n'%z)
+            windowFiles[wi].write("{0}\t{1}\n".format(j,z)      )
             rpFile.write(   "{0}\n".format(calculate_rp(t) )  )
             tp = np.linalg.norm(t[-1] - np.dot(t[-1],t0)*t0     )
             tpFile.write(   "{0}\n".format(tp)                  )
@@ -60,6 +65,7 @@ for wi in range(num_windows):
 rpFile.close()
 rptpFile.close()
 tpFile.close()
+zFile.close()
 for f in windowFiles:
     windowFiles[f].close()
 
