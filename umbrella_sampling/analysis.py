@@ -82,17 +82,19 @@ def calculate_height_dist(data_array):
         rng = (j*linesPerWindow,(j+1)*linesPerWindow)
 
         binContents[j],bins[j] = np.histogram(Z[rng[0]:rng[1]],bins=binsPerWindow,range=z_windows[j])
+        #plt.semilogy(bins[j][:-1],binContents[j])
         print binContents[j]
-        #plt.hist(Z,bins=binsPerWindow+1,range=z_windows[j],histtype='bar')
-    quit()
+        #plt.hist(Z,bins=binsPerWindow+1,range=z_windows[j],histtype='step')
+    #plt.show()
+    #quit()
     for j in range(num_windows-1):
         multiplier = 1.*binContents[j][-1]/binContents[j+1][0]
         for k in range(len(binContents[j+1])):
             binContents[j+1][k] *= multiplier
-        print binContents[j]
+        #print binContents[j]
         #plt.plot(bins[j][:-1],binContents[j])
     #plt.show()
-    quit()
+    #quit()
     for j in range(num_windows):
         for k in range(len(bins[j])-1):
             bins[j][k] = (bins[j][k+1] + bins[j][k])/2.
@@ -111,6 +113,7 @@ def calculate_height_dist(data_array):
                 A.append(-math.log(binContents[j][k]/float(maxFreq)))
     print Z ,'\n', A
     plt.plot(Z,A)
+    plt.savefig('z_dist.png')
     plt.show()
     quit()
 
