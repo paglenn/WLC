@@ -1,12 +1,11 @@
+# calculate z free energy given umbrella windows overlapping by one bin (EXP)
 import numpy as np
 import os
 from parameters import *
 import math
-data_array = None
-
-def calculate_height_dist(data_array):
+def calculate_height_dist():
     # as tangential component of R to initial displacement
-    #t0 = data_array[0][0]
+    #t0 = [0][0]
     Z = []
     ctr = 0
     if os.path.isfile(z_file):
@@ -82,9 +81,9 @@ def plot_cosines() :
 #plot_cosines()
 
 
-calculate_height_dist(data_array)
+calculate_height_dist()
 '''
-F_z = calculate_height_dist(data_array)
+F_z = calculate_height_dist()
 import matplotlib.pyplot as plt
 plt.plot(F_z[0],F_z[1],'b-.')
 plt.savefig('z_dist.png')

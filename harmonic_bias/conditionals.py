@@ -1,3 +1,4 @@
+# get rp, tp, rptp values for a given z
 import numpy as np
 import os
 from parameters import *
@@ -49,6 +50,12 @@ def calculate_RPTP(RP,TP):
     rptpFile.close()
     return RPTP
 
+def condition():
+    TP = calculate_TP()
+    RP = calculate_RP()
+    RPTP = calculate_RPTP()
+
+'''
 TP = calculate_TP()
 RP = calculate_RP()
 Z = calculate_Z()
@@ -61,5 +68,5 @@ print(z_X_joint.shape,X_joint.shape)
 #print(z_X_joint)
 #z_cond = z_X_joint/X_joint
 
-
+'''
 
