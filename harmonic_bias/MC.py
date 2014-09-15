@@ -2,7 +2,9 @@ import numpy as np
 import parameters as par
 import math
 import random
+from numba import autojit
 
+@autojit
 def perturb(t,j):
 
     t_old = np.copy(t[j] )
@@ -12,19 +14,18 @@ def perturb(t,j):
 
     return t, t_old
 
-
 def deltaE(t,t_old,index) :
 
     E_old = E_new = 0.
-    k = 1./par.dx
+    q = 1./par.dx
 
     for nn in par.nbrs[index]:
-        E_old -= k * np.dot(t[nn],t_old)
-        E_new -= k * np.dot(t[nn],t[index])
+        E_old -= q * np.dot(t[nn],t_old)
+        E_new -= q * np.dot(t[nn],t[index])
 
     return E_new - E_old
 
-
+@autojit
 def calculate_r_vec(t):
     r_vec = np.zeros(t[0].shape)
     for j in range(par.num_actins):
@@ -41,7 +42,6 @@ def sum_cosines(t):
 
     return s
 
-
 def calculate_z(t):
     r = calculate_r_vec(t)
     z_vec = np.dot(r,par.t0) * par.t0  # norm(t0) == 1 so no division needed
@@ -57,7 +57,6 @@ def deltaE_bias(t,t_old,index,zmin):
 
     return dE
 
-
 def calculate_rp(t):
 
     r_vec = calculate_r_vec(t)
@@ -65,7 +64,6 @@ def calculate_rp(t):
     rp_vec = r_vec - z_vec
     rp = np.linalg.norm(rp_vec)
     return rp/par.L
-
 
 def calculate_rptp(t):
 
@@ -77,10 +75,11 @@ def calculate_rptp(t):
     rptp = np.dot(tp,rp_vec)
     return rptp
 
-def adjust_z(t,window):
-    z = calculate_z(t)
+def adjust_z(t,w_index):
+    window = par.z_windows[w_index]
+    z = 0.
     window_mean = 0.5*sum(window)
-    w = max(window) - min(window)
+    w = window[1] - window[0]
     target = window_mean + w/2. * np.random.uniform(-1,1)
     tol = w/4.
 
@@ -90,18 +89,18 @@ def adjust_z(t,window):
         t,t_old = perturb(t,random_index)
         #update(t,random_index)
         z_new = calculate_z(t)
-        change = z_new - z
+        dz = z_new - z
 
         if z > target and change > 0:
             t[random_index] = t_old
             #update(t,random_index)
-            change = 0
+            dz = 0
         if z < target and change < 0:
             t[random_index] = t_old
             #update(t,random_index)
-            change = 0
+            dz = 0
 
-        if change != 0 :
+        if dz != 0 :
             z = z_new
 
     return t

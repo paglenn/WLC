@@ -1,5 +1,5 @@
 # simulation.py
-# single actin filament (WLC) monte carlo routine
+# Kratky-Porod model MCMC simulation driver
 # umbrella sampling simulation adapted from that for Ising model
 import numpy as np
 from MC import *
@@ -12,7 +12,7 @@ import os
 #rpFile = open(rp_file,'w')
 #tpFile = open(tp_file,'w')
 #rptpFile = open(rptp_file,'w')
-progressFile = open("progress.out",'w')
+progressFile = open(progress_file,'w')
 zFile = open(z_file,'w')
 windowFiles = dict(enumerate(open(f,'w') for f in window_files))
 
@@ -42,7 +42,7 @@ for wi in windowSeq:
 
         ##############################################
         # Adjust height to random target value within window
-        adjust_z(t,w)
+        adjust_z(t,wi)
         z = calculate_z(t)
         #zFile.write('%f\n'%z)
         #tp = np.linalg.norm(t[-1] - np.dot(t[-1],t0)*t0 )
@@ -62,11 +62,13 @@ for wi in windowSeq:
             # Write reports of data to file
 
             z = calculate_z(t)
+            '''
             zFile.write('{} {}'.format(z,wi))
             for n in windowSeq:
                 u_kln = 0.5*K*(z-Zmin[n])**2.
                 zFile.write(' {}'.format(u_kln ) )
             zFile.write('\n')
+            '''
 
 
             windowFiles[wi].write("{0}\t{1}\n".format(step,z)      )

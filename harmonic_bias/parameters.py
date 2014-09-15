@@ -1,10 +1,10 @@
 # simulation parameters
 # note: l_p is the persistence length (~37 um for actin rod )
 
-numsteps = int(600)
+numsteps = int(5000)
 #dx = 0.0027 # (units of l_p -- from "Actin Based Motility" )
 L = 4./15  # from "limits of filopodium stability"
-num_actins = N = 10 # N == 100 and L == 4./15 corresponds well with dx above
+num_actins = N = 100 # N == 100 and L == 4./15 corresponds well with dx above
 dx = L/float(N)
 gaus_var = 5*dx # variance in random step
 
@@ -38,10 +38,11 @@ z_window_edges = [ Z[1] for Z in z_windows]
 
 # files
 window_files = ["window_{0}.dat".format(i) for i in range(num_windows) ]
-z_file = 'zvals.dat'
+z_file = 'uwham.dat'
 cos_file = 'cos.dat'
 rp_file = 'rpvals.dat'
 rptp_file = 'rptpvals.dat'
 tp_file = 'tpvals.dat'
 metadata_file = 'metadata.dat'
+progress_file = 'progress.out'
 

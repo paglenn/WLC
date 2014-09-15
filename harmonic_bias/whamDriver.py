@@ -28,18 +28,19 @@ z_hi = 5*len(Z)//8
 z_lo = 3*len(Z)//8
 #z_hi = 62; z_lo = 24
 import matplotlib.pyplot as plt
-plt.plot(Z,A)
+plt.plot(Z,A,lw=2.0)
 import numpy as np
 linearFit = np.polyfit(Z[z_lo:z_hi],A[z_lo:z_hi],1)
 #linearFit = np.polyfit(Z[nb/4:3*nb/4+1],A[nb/4:3*nb/4+1],1)
 fb = - par.L*linearFit[0] # buckling force
 plt.xlabel(r'$z/L$')
 plt.ylabel(r'$A(z/L)$')
-plt.plot([Z[z_lo],Z[z_hi]],[A[z_lo],A[z_hi]],'k--',lw=2, label="bounds used for F_b")
+plt.plot([Z[z_lo],Z[z_hi]],[A[z_lo],A[z_hi]],'k',lw=0.5, label=r"bounds used for $F_{b}$")
 plt.plot([Z[z_lo],Z[z_hi]],[A[z_lo],A[z_hi]],'k.',ms=12)
 plt.title(r'$\Delta = %.3f\ell_{p}$ : $f_{b}\approx %.3f$'%(par.dx,fb))
-plt.ylim(-0.1,max(A)+0.1)
-plt.xlim(0,1.1)
+#plt.ylim(-0.1,max(A)+0.1)
+#plt.xlim(0,1.1)
+#plt.axvline(1.0,min(A),max(A),color='k',ls='--',label=r'$z=L$')
 plt.legend()
-plt.savefig('fe_z.png')
+#plt.savefig('fe_z.png')
 plt.show()
