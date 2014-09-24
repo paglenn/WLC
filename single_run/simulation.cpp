@@ -6,17 +6,17 @@ int main() {
 
 	int start_time = time(0); 
 	init(); 
-	int num_acc = 0; 
+	long int num_acc = 0; 
 	
 	for(int j = 0; j < numSteps; j++) { 
 		int acc = umbrella_mc_step(); 
 		num_acc += acc; 
 		//std::cout<<acc<<std::endl;
-		WriteEventData();	
+		if(j%sampleRate == 0 ) WriteEventData();	
 		// Write progress report 
 		char progress[50]; 
-		sprintf(progress,"step %d/%d\n",j,numSteps);
-		fputs(progress,progressFile);
+		sprintf(progress,"step %d/%ld\n",j,numSteps);
+		if(j%sampleRate == 0 ) fputs(progress,progressFile);
 	} // end simulation 
 
 	// write statistics and close up 

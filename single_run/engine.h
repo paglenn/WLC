@@ -11,14 +11,16 @@
 #include<TCanvas.h>
 #include<TF1.h>
 #include<TPad.h>
+#include<TProfile.h>
 //using namespace std; 
 
 int j, step, w, wpass; 
 int seed = time(0); 
 std::default_random_engine rng (seed);
-const int numSteps =1000000000; 
+const long int numSteps = 1e8; 
 double L = 0.1; 
 const int N = 100; 
+int sampleRate = 1e4; 
 double delta = L/double(N); 
 double gauss_var = pow(1.5*L,2); 
 double tx[N],ty[N],tz[N]; 
@@ -37,11 +39,13 @@ FILE * cosFile;
 FILE * tpFile; 
 FILE * rpFile;
 FILE * rptpFile; 
-TFile DataFile("data.root","recreate");
+TFile DataFile("results.root","recreate");
+TH1D* zHist = new TH1D(); 
 TH1D* rpHist = new TH1D(); 
 TH1D* tpHist = new TH1D(); 
 TH1D* rptpHist = new TH1D(); 
 TH1D* cosHist = new TH1D(); 
+TProfile* corr = new TProfile(); 
 const double PI = acos(-1.);
 
 
@@ -62,14 +66,20 @@ void init() {
 	tpHist->SetTitle("tp");
 	rptpHist->SetTitle("<R_{#perp}, T_{#perp}>");
 	cosHist->SetTitle("cosines");
+	zHist->SetTitle("z");
+    corr->SetTitle("corr");
 	cosHist->SetBit(TH1::kCanRebin);
 	rpHist->SetBit(TH1::kCanRebin);
 	tpHist->SetBit(TH1::kCanRebin);
 	rptpHist->SetBit(TH1::kCanRebin);
+	zHist->SetBit(TH1::kCanRebin);
+    corr->SetBit(TH1::kCanRebin); 
 	cosHist->SetBins(100,0.9,1.0);
 	rpHist->SetBins(100,-0.01,0.01);
 	tpHist->SetBins(100,-0.01,0.01);
 	rptpHist->SetBins(100,-0.01,0.01);
+	zHist->SetBins(100,0.8,1.0) ;
+    corr->SetBins(100,0.95,1.0); 
 	srand(seed); 
 
 	progressFile = fopen("progress.out","w"); 
@@ -128,8 +138,8 @@ double dot(double x1, double y1, double z1, double x2, double y2, double z2) {
 
 double getZ() {
 	double z = 0.;
-	for(int j = 0; j < N; j++) z += delta*tz[j] ;
-	return z/L; 
+	for(int j = 0; j < N; j++) z += tz[j] ;
+	return z/float(N); 
 }
 
 double getRP() {
@@ -138,8 +148,8 @@ double getRP() {
 		rpx += tx[j]; 
 		rpy += ty[j];
 	}
-	double rp = delta*sqrt(rpx*rpx+rpy*rpy);
-	return rp/L;
+	double rp = sqrt(rpx*rpx+rpy*rpy);
+	return rp/float(N);
 }
 
 double getRPTP() {
@@ -151,7 +161,7 @@ double getRPTP() {
 		ry += ty[i];
 	}
 
-	return (rx*tpx + ry*tpy); 
+	return (rx*tpx + ry*tpy)/float(N); 
 }
 
 	
@@ -273,6 +283,23 @@ void write_RPTP() {
 	rptpHist->Fill(rptp);
 }
 
+void write_Z() {
+	double z = getZ(); 
+	zHist->Fill(z); 
+}
+
+void writeCorrelator() {
+    int rmax = 10 ; 
+	for(int r = 0; r <= rmax; r++) {
+
+		for(int i = 0; i < N-r; i++) {
+            
+			double c_r = dot(tx[i],ty[i],tz[i],tx[i+r],ty[i+r],tz[i+r]);
+            corr->Fill(r,c_r);
+        }
+    }
+}
+
 bool umbrella_mc_step(int w_index = numWindows-1) {
 
 	//std::cout<<tx[1]<<ty[1]<<tz[1]<<std::endl;
@@ -298,9 +325,11 @@ bool umbrella_mc_step(int w_index = numWindows-1) {
 void WriteEventData() {
 
 	write_cosines();
+    writeCorrelator();
 	write_RP();
 	write_TP();
 	write_RPTP();
+	write_Z(); 
 }
 
 void writeHistograms() {
@@ -309,11 +338,14 @@ void writeHistograms() {
 	tpHist -> Scale(1./tpHist->Integral("width")) ; 
 	rptpHist -> Scale(1./rptpHist->Integral("width") ) ; 
 	cosHist -> Scale(1./cosHist->Integral("width")) ; 
+	zHist->Scale(1./zHist->Integral("width")) ;
 	
 	rpHist->Write("rp");
 	rptpHist->Write("rptp");
 	tpHist->Write("tp");
 	cosHist->Write("dcos");
+	zHist->Write("z"); 
+    corr->Write("corr");
 }
 
 int cleanup() {
