@@ -1,4 +1,6 @@
-// modules for actin monte carlo sim
+// Umbrella sampling code rewritten from simple sampling , 
+// since that was known to be working. Hopefully, if there is an error, 
+// WE WILL FIND IT! 
 #include<iostream>
 #include<cmath>
 #include<vector>
@@ -6,60 +8,116 @@
 #include<string>
 #include<cstdlib>
 #include<random>
-#include<ctime>
+#include<TH1D.h>
+#include<TFile.h>
+//#include<TCanvas.h>
+//#include<TF1.h>
+//#include<TPad.h>
+//#include<TProfile.h>
+//using namespace std; 
 
 int j, step, w, wpass; 
+
 int seed = time(0); 
 std::default_random_engine rng (seed);
-const int numSteps = 1e7; 
-int sampleRate = 1000; 
-double L = 0.1; 
+
+// simulation parameters 
+const int numSteps = 5e7; // 7.5e5; 
+int progressFreq = numSteps/10; 
+int checkSumFreq = numSteps/5;
+int corrTime = 2e2; 
+int equilTime = 4e4; 
+int mbarFreq = corrTime; 
+int numPasses = 1; 
+const int numWindows = 50; 
+long int numFrames = numWindows * numPasses * numSteps;
+double equilibrationTime = 0. ; 
+double k[numWindows]; 
+double zmin[numWindows]; 
+double zstart = 0.9; 
+
+
+// system parameters 
+//double L = 0.1; 
+double L = 3./5; 
 const int N = 100; 
-double delta = L/double(N); 
-double gauss_var = pow(10*delta,2); 
+double ds = L/float(N); // segment length 
+double beta = 1./ds; 
+double stepVariance = 0.1;  // for sphere sampling 
+double adjustingVariance = 0.05; 
+//double stepVariance = 0.5;
+//double K = 3.25e2/(N*N); 
+double K = 2e4/(N*N); 
+//double K = 10./(N*N); 
 double tx[N],ty[N],tz[N]; 
 
-int numPasses = 1; 
-const int numWindows = 10; 
-int numBins = 100; 
-double binWidth = 1./numBins; 
-double binOverlap = 1*binWidth; 
-double q = 1./delta; 
-double k[numWindows];
-int numFrames = numWindows * numPasses * numSteps;
-double winMin[numWindows],winMax[numWindows],zmin[numWindows];
-FILE * zFile; 
+// Data files 
 FILE * windowFiles[numWindows];
+FILE * mbarFile_u_kln;
+FILE * mbarFile_u_kn; 
 FILE * progressFile; 
-FILE * parameterFile;
+FILE * metaFile; 
 //FILE * cosFile; 
-FILE * metaFile;
+//FILE * tpFile; 
+//FILE * rpFile;
+//FILE * rptpFile; 
+TFile DataFile("data.root","recreate");
 
+/* // ROOT histograms
+TH1D* zHist = new TH1D(); 
+TH1D* rpHist = new TH1D(); 
+TH1D* tpHist = new TH1D(); 
+TH1D* rptpHist = new TH1D(); 
+TH1D* cosHist = new TH1D(); 
+TProfile* corr = new TProfile(); 
+*/
+TH1D * zvals[numWindows]; 
+TH1D * normHist = new TH1D(); 
+const double PI = acos(-1.);
 
 double wmax,wmin,width, wmean, z ;
 double target, tol; 
 int random_index ; 
 std::vector<double> t0(3,0.),t_old(3,0.); 
-double kdE; 
 
-double rnd() {
-
-	double randnum = rand()/float(RAND_MAX); 
-	return 2*randnum - 1 ; 
+/*
+void initHists() {
+	cosHist->SetBit(TH1::kCanRebin);
+	rpHist->SetBit(TH1::kCanRebin);
+	tpHist->SetBit(TH1::kCanRebin);
+	rptpHist->SetBit(TH1::kCanRebin);
+	zHist->SetBit(TH1::kCanRebin);
+    corr->SetBit(TH1::kCanRebin); 
+	cosHist->SetBins(100,0.9,1.0);
+	rpHist->SetBins(100,-0.01,0.01);
+	tpHist->SetBins(100,-0.01,0.01);
+	rptpHist->SetBins(100,-0.01,0.01);
+	zHist->SetBins(100,0.8,1.0) ;
+    corr->SetBins(100,0.95,1.0); 
 }
+*/
 
+// all initialization is here 
 void init() {
 
+	//initHists(); 
+	normHist->SetBit(TH1::kCanRebin); 
+	normHist->SetBins(100,0.95,1.05); 
+	t_old[2] = 1. ; 
 	t0.at(2) = 1.; 
-	zFile = fopen("uwham.dat","w");
+	mbarFile_u_kln = fopen("ukln.dat","w");
+	mbarFile_u_kn = fopen("ukn.dat","w"); 
 	srand(seed); 
+	//rpFile = fopen("rpvals.dat","w");
+	//tpFile = fopen("tpvals.dat","w");
+	//rptpFile = fopen("rptpvals.dat","w");
+	//cosFile = fopen("cos.dat","w"); 
 
 	progressFile = fopen("progress.out","w"); 
-    parameterFile = fopen("parameters.dat","w");
-	//cosFile = fopen("cos.dat","w"); 
-    char params[100]; 
-    sprintf(params,"%d windows\n%d passes/window\n%d steps/pass\n",numWindows,numPasses,numSteps);
-    fputs(params,parameterFile);
+
+	 char params[100];
+	 sprintf(params,"%d windows\n%d passes/window\n%d steps/pass\n",numWindows,numPasses,numSteps);
+	 fputs(params,progressFile); 
 
 	for(int j = 0; j < N; j++) {
 
@@ -68,38 +126,19 @@ void init() {
 		tz[j] = 1.;
 	}
 
+	
 	for(int j = 0.; j < numWindows; j++ ) {
-
-		winMin[j] = double(j)/numWindows; 
-		winMax[j] = double(j+1)/numWindows + binOverlap;
-		//if(j +1==numWindows) winMax[j] = 1.0; // note: this may be important for wham  
-		zmin[j] = 0.5*(winMin[j] + winMax[j]);
-		if( j > 5) k[j] = N*L*L/16;
-		else k[j] = N*L*L/16;
-        char winParams[100]; 
-        sprintf(winParams,"window %d: winMin = %f\twinMax = %f\tzmin = %f\tk = %f\n",j,winMin[j],winMax[j],zmin[j],k[j]);
-        fputs(winParams,parameterFile);
+		zmin[j] = (1-zstart)*N*(j + 0.5)/float(numWindows) + zstart*N;
+		k[j] = K; 
+		if(j +1 == numWindows ) k[j] = 3*K; 
+		std::string fileName = "window_" + std::to_string(j); 
+		windowFiles[j] = fopen(fileName.c_str(), "w"); 
 	}
-    fclose(parameterFile);
 	
-	for(int j = 0; j < numWindows; j++) { 
-		std::string fileName = "window_" + std::to_string(j);
-		windowFiles[j] = fopen(fileName.c_str(),"w"); 
-	}
 
 }
-
-void reset() {
-	
-	for(int j = 0; j < N; j++) {
-
-		tx[j] = 0.; 
-		ty[j] = 0.;
-		tz[j] = 1.;
-	}
-}
-
-void normalize(int index) {
+ 
+void normalizeVector(int index) {
 
 	double norm = sqrt(tx[index]*tx[index] + ty[index]*ty[index] + tz[index]*tz[index] );
 	tx[index] /= norm; 
@@ -108,7 +147,8 @@ void normalize(int index) {
 
 }
 
-void perturb(int index, double var = gauss_var) { 
+// for rotation of a segment 
+void perturb(int index, double var = stepVariance ) { 
 
 	t_old[0] = tx[index]; 
 	t_old[1] = ty[index]; 
@@ -117,153 +157,317 @@ void perturb(int index, double var = gauss_var) {
 	std::normal_distribution<double> gaus(0.0,var);
 
 	tx[index] += gaus(rng);
-	gaus.reset();
+	gaus.reset(); // needed for independent rv's 
 	ty[index] += gaus(rng);
 	gaus.reset();
 	tz[index] += gaus(rng);
 	gaus.reset();
 
-	normalize(index);
+	normalizeVector(index);
 }
 
+// define dot product 
 double dot(double x1, double y1, double z1, double x2, double y2, double z2) {
 
-	double sum = x1*x2 + y1*y2 + z1*z2; 
-	return sum ; 
+	// correct for any numerical imprecision
+	//double chk1 = sqrt(x1*x1+y1*y1+z1*z1); 
+	//double chk2 = sqrt(x2*x2+y2*y2+z2*z2); 
+
+	return x1*x2 + y1*y2 + z1*z2 ; 
 }
 
 double getZ() {
+	// height of polymer along z-axis  
 	double z = 0.;
-	for(int j = 0; j < N; j++) z += delta*tz[j] ;
-	return z/L; 
+	for(int j = 0; j < N; j++) z += tz[j] ;
+	return z; 
 }
 
-void check() {
-
-	std::cout<<tx[1]<<ty[1]<<tz[1]<<std::endl;
-	std::cout<<"norm: "<< (tx[j]*tx[j] + ty[j]*ty[j] + tz[j]*tz[j]) << std::endl;
-
+double getRP() {
+	// projection of eed vector into the plane 
+	double rpx = 0.,rpy = 0.;
+	for(int j = 0; j < N; j++) {
+		rpx += tx[j]; 
+		rpy += ty[j];
+	}
+	return sqrt(rpx*rpx+rpy*rpy);
 }
 
-double deltaE(int index, int w_index) {
-	double t0x,t0y,t0z; 
-	t0x = t_old[0]; t0y = t_old[1]; t0z = t_old[2]; 
+double getRPTP() {
+	// dot product of perpendicular component of final segment and 
+	// projection of eed vector into the plane 
+	double rx = 0.,ry = 0.; 
+	double tpx=0.,tpy=0.;
+	tpx = tx[N-1]; tpy = ty[N-1]; 
+	for(int i = 1; i < N; i++) {
+		rx += tx[i];
+		ry += ty[i];
+	}
+
+	return (rx*tpx + ry*tpy); 
+}
+
+	
+double getTP() { 
+	//perpendicular component of final segment 
+	double tp = sqrt(tx[N-1]*tx[N-1] + ty[N-1]*ty[N-1]); 
+	return tp; 
+}
+
+// bias potential 
+double V(double z, int wj) {
+	return 0.5*k[wj]*pow(z - zmin[wj],2.);
+}
+
+
+double deltaE(int index, int w_index, double z_prev ) {
 	double E_old = 0, E_new = 0  ; 
 	
 	if( index+1 != N) {
-		E_old -= dot(tx[index+1],ty[index+1],tz[index+1],t0x,t0y,t0z) ;
+		E_old -= dot(tx[index+1],ty[index+1],tz[index+1],t_old[0],t_old[1],t_old[2]) ;
 		E_new -= dot(tx[index+1],ty[index+1],tz[index+1],tx[index],ty[index],tz[index]) ;
 	}
 	
 	if( index != 0) {
-		E_old -= dot(tx[index-1],ty[index-1],tz[index-1],t0x,t0y,t0z) ;
+		E_old -= dot(tx[index-1],ty[index-1],tz[index-1],t_old[0],t_old[1],t_old[2]) ;
 		E_new -= dot(tx[index-1],ty[index-1],tz[index-1],tx[index],ty[index],tz[index]) ;
 	}
+	//std::cout<<E_new - E_old << std::endl; 
 	
-	double dE = (E_new - E_old) ; 
+	E_old += V(z_prev,w_index); 
+	E_new += V(getZ(),w_index); 
+	//std::cout<<E_new - E_old << std::endl; 
+	//exit(1); 
 
-	z = getZ(); 
-	dE += 0.5*k[w_index]*pow(z - zmin[w_index],2.) ; 
-
-	return q*dE;
+	return E_new - E_old ;
 
 }
 
+// reversion for acceptance criterion failure 
 double revert(int index) {
 
-	tx[index] = t_old[0]; 
-	ty[index] = t_old[1]; 
-	tz[index] = t_old[2]; 
+	tx[index] = (float) t_old[0]; 
+	ty[index] = (float) t_old[1]; 
+	tz[index] = (float) t_old[2]; 
 
 	return 0; 
 
 }
 
+// adjust down to z window 
 void adjustZ(int w_index) {
 
-	wmax = winMax[w_index] ; 
-	wmin = winMin[w_index] ;
-	width = wmax - wmin ;
-	wmean = 0.5*(wmax + wmin) ; 
-	z = 0.; 
-	target = wmean; //+ width/2. * rnd(); // (-1,1)
-	while(target>1) target = wmean + width/2. * rnd(); // (-1,1)
-	//std::cout<<(target-wmean)*2./width<<std::endl;
-	tol = width/8.;
+	double z = getZ(); 
+	double tol = 1.;
 
-	while(fabs(z - target) > tol) {
+	while(fabs(z - zmin[w_index]) > tol) {
 
 		random_index = 1+rand()%(N-1) ; 
-		perturb(random_index,1); 
+		perturb(random_index,adjustingVariance); 
 		double z_new = getZ(); 
 		double dz = z_new - z; 
 
-		if(z > target && dz > 0 ) dz = revert(random_index); 
-		if(z < target && dz < 0 ) dz = revert(random_index); 
+		if(z > target & dz > 0 ) dz = revert(random_index); 
+		if(z < target & dz < 0 ) dz = revert(random_index); 
 
 		if(dz!=0) z = z_new; 
 	}
 }
 
 
+/*
+void write_cosines() {
+	for(int j =0; j< N-1; j++) {
+		double tcos = dot(tx[j],ty[j],tz[j],tx[j+1],ty[j+1],tz[j+1]);  
+		cosHist->Fill(tcos); 
+	}
+}
+
+void write_TP() {
+
+	double tp = getTP(); 
+	tpHist->Fill(tp);
+}
+
+void write_RP() {
+
+	double rp = getRP(); 
+	rpHist->Fill(rp);
+}
+
+void write_RPTP() {
+
+	rptpHist->Fill( getRPTP() );
+}
+
+void write_Z() {
+	zHist->Fill(getZ()); 
+}
+
+void writeCorrelator() {
+    int rmax = 10 ; 
+	for(int r = 0; r <= rmax; r++) {
+
+		for(int i = 0; i < N-r; i++) {
+            
+			double c_r = dot(tx[i],ty[i],tz[i],tx[i+r],ty[i+r],tz[i+r]);
+            corr->Fill(r,c_r);
+        }
+    }
+}
+*/
+
+// after each window , reset all the segment orientations before adjusting down again (decorrelation) 
+void reset() {
+	srand(time(0)); 
+	for(int j = 1; j < N; j++) {
+		tx[j] = 0.; 
+		ty[j] = 0.; 
+		tz[j] = 1.;
+	}
+}
+
+// Metropolis acceptance routine 
 bool umbrella_mc_step(int w_index) {
 
-	//std::cout<<tx[1]<<ty[1]<<tz[1]<<std::endl;
+	double z_old = getZ(); 
 	random_index = 1 + rand() % (N-1); // random int (1,N-1)  
 
 	perturb(random_index); 
 
-	kdE = deltaE(random_index, w_index); 
-	//std::cout<< kdE << std::endl;
+	double dE = deltaE(random_index, w_index,z_old); 
 
-	if(kdE <= 0.) return true; 
-	else if (rand()/double(RAND_MAX) > exp(-kdE) ) {
-
-		revert(random_index); 
-		return false;
+	if(dE <= 0.) return true; 
+	else if (rand()/double(RAND_MAX) > exp(-beta*dE) ) {
+		return (bool) revert(random_index); 
 	}
+	
 
 	return true; 
 
 }
-/*
-void writeCosines() {
 
-	for(int j =0; j< N-1; j++) {
-		double cos = dot(tx[j],ty[j],tz[j],tx[j+1],ty[j+1],tz[j+1]);  
-		char cosString[10]; 
-		sprintf(cosString,"%.5f\n",cos);
-		fputs(cosString,cosFile); 
+// get total energy for MBAR (unbiased) 
+double getE() { 
+	float E = 0. ; 
+	for (int j = 0; j+1<N; j++) {
+		E -= dot(tx[j],ty[j],tz[j],tx[j+1],ty[j+1],tz[j+1]); 
 	}
+	return E; 
 }
-*/
-void writeZ(int window,int timeStep) {
 
+double getBiasedE(int wi) { 
+
+	return getE() + V(getZ(),wi) ; 
+}
+
+
+// write input for MBAR/uwham 
+void writeZFile(int wi) {
+
+    double z = getZ() ; 
+    char zString[20]; 
+	sprintf(zString,"%d ",wi);
+    fputs(zString,mbarFile_u_kln);
+
+	double E = getE();
+
+    // compute u_kln 
+	for(int w = 0; w < numWindows; w++) {
+        char u_kln[10]; 
+        sprintf(u_kln,"%g ",beta*(E + V(z,w)) );
+        fputs(u_kln,mbarFile_u_kln); 
+    }
+
+    char newline[3];
+    sprintf(newline,"\n");
+    fputs(newline,mbarFile_u_kln); 
+
+	char u_kn[10]; 
+	sprintf(u_kn,"%g\n",beta*V(z,wi)); 
+	fputs(u_kn,mbarFile_u_kn); 
+}
+
+
+void writeZ(int currWin,int timeStep) {
 	double z = getZ(); 
 	char zString[20];
-	sprintf(zString,"%d\t%f\n",timeStep,z);
-	fputs(zString,windowFiles[window]);
+	sprintf(zString,"%d\t%f\t%f\n",timeStep,z,getBiasedE(currWin));
+	fputs(zString,windowFiles[currWin]);
 }
 
 void write_metadata() {
 	metaFile = fopen("metadata.dat","w") ;
-	fputs("#window_file\tz_min\tk\n",metaFile);
+	//fputs("#window_file\tz_min\tk\n",metaFile);
 	for(int j = 0; j < numWindows; j++) {
-
 		char data[100];
-		//sprintf(data,"/home/pglenn/conversion/window_%d\t%f\t%f\n",j,zmin[j],k[j]);
-		sprintf(data,"/Users/paulglen/github/actin/conversion/window_%d\t%f\t%f\n",j,zmin[j],k[j]);
+		//sprintf(data,"/home/pglenn/test_mk3/window_%d\t%f\t%f\n",j,zmin[j],k[j]);
+		sprintf(data,"/Users/paulglen/github/actin/conversion/window_%d\t%f\t%f\t%d\t%f\t\n",j,zmin[j],k[j],corrTime,ds);
+		// window harmonic_min harmonic_const. correl_time temperature 
 		fputs(data,metaFile);
 	}
 	fclose(metaFile); 
 	
 }
 
-void cleanup() {
-	fclose(zFile); 
+void checkNorms() { 
+	
+	for ( int jj = 0; jj < N; jj++ ) {
+		normHist->Fill(tx[j]*tx[j] + ty[j]*ty[j] + tz[j]*tz[j]); 
+	}
+}
+
+/*
+void WriteEventData() {
+
+	write_cosines();
+    writeCorrelator();
+	write_RP();
+	write_TP();
+	write_RPTP();
+	write_Z(); 
+}
+
+void writeHistograms() {
+	// normalize all histograms  
+	rpHist -> Scale(1./rpHist->Integral("width")) ; 
+	tpHist -> Scale(1./tpHist->Integral("width")) ; 
+	rptpHist -> Scale(1./rptpHist->Integral("width") ) ; 
+	cosHist -> Scale(1./cosHist->Integral("width")) ; 
+	zHist->Scale(1./zHist->Integral("width")) ;
+	
+	rpHist->Write("rp");
+	rptpHist->Write("rptp");
+	tpHist->Write("tp");
+	cosHist->Write("dcos");
+	zHist->Write("z"); 
+    corr->Write("corr");
+}
+*/
+int cleanup() {
+	fclose(mbarFile_u_kln); 
+	fclose(mbarFile_u_kn); 
 	fclose(progressFile);
 	//fclose(cosFile);
-	for(int j = 0; j < numWindows; j++) fclose(windowFiles[j]);
+	//DataFile.Write(); 
+	normHist->Write("norms");
+
+	for(int j = 0; j < numWindows; j++ ) { 
+		std::string name = "zvals_" + std::to_string(j); 
+		zvals[j]->Write(name.c_str()) ;  
+		fclose(windowFiles[j]); 
+	}
+	DataFile.Close();
+	return 0 ; 
 }
 
 
+/*
+ * checksum to make sure the code was working 
+void check() {
+
+	std::cout<<tx[1]<<ty[1]<<tz[1]<<std::endl;
+	std::cout<<"norm: "<< (tx[j]*tx[j] + ty[j]*ty[j] + tz[j]*tz[j]) << std::endl;
+
+}
+*/
