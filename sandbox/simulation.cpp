@@ -1,7 +1,6 @@
 #include "engine.h"
 #include<vector>
 #include<ctime>
-using std::cout ;
 
 int main() {
 
@@ -28,8 +27,7 @@ int main() {
 				if(j%progressRate == 0 ) { 
 					
 					char progress[50]; 
-					//sprintf(progress,"step %g/%g\tpass %g/%g\twindow%d/%d\n",(float) j,(float) numSteps,(float) wpass,(float) numPasses,wi,numWindows);
-					sprintf(progress,"window %d/%d\tpass %g/%g\tstep %g/%g\n",wi,numWindows,(float) wpass,(float) numPasses,(float) j , (float) numSteps);
+					sprintf(progress,"step %g/%g\tpass %g/%g\twindow%d/%d\n",(float) j,(float) numSteps,(float) wpass,(float) numPasses,wi,numWindows);
 					fputs(progress,progressFile);
 				}
 			checkNorms(); 

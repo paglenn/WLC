@@ -32,8 +32,8 @@ import math
 # Parameters
 if len(sys.argv) == 1: exit('usage: python mbar_umbrella_sampling.py [K] ')
 K = int( sys.argv[1])                     # number of umbrellas
-N_max = 30000              # maximum number of snapshots/simulation
-val_min = 0               # min for PMF
+N_max = 400000              # maximum number of snapshots/simulation
+val_min = 5                 # min for PMF
 val_max = 100                # max for PMF
 centersf = "metadata.dat"      # file with list of brolly centers and paths to trajectory files
 n_skip = 0                  # skip the first n datapoints
@@ -74,7 +74,7 @@ for k in range(K):
     #else: print len(tokens)
 
 beta_k = 1.0/(kB*T_k)   # beta factor for the different temperatures
-DifferentTemperatures = False
+DifferentTemperatures = True
 #if (min(T_k) == max(T_k)):
 #    DifferentTemperatures = False            # if all the temperatures are the same, then we don't have to read in energies.
 # Read the simulation data
@@ -117,10 +117,11 @@ for k in range(K):
     # timeseries.  If the temperatures differ, use energies to determine samples; otherwise, use the cosine of val
 
 
+    '''
     if (DifferentTemperatures):
         g_k[k] = timeseries.statisticalInefficiency(u_kn[k,:], u_kn[k,:])
         print "Correlation time for set %5d is %10.3f" % (k,g_k[k])
-        indices = timeseries.subsampleCorrelatedData(u_kn[k,:], fast=True, werbose=True)
+        indices = timeseries.subsampleCorrelatedData(u_kn[k,:])
     else:
         g_k[k] = timeseries.statisticalInefficiency(val_kn[k,:], val_kn[k,:])
         print "Correlation time for set %5d is %10.3f" % (k,g_k[k])
@@ -129,6 +130,7 @@ for k in range(K):
     N_k[k] = len(indices)
     u_kn[k,0:N_k[k]] = u_kn[k,indices]
     val_kn[k,0:N_k[k]] = val_kn[k,indices]
+    '''
 
    # print val_kn[k,0:N_k[k]]
 
@@ -141,8 +143,7 @@ val_max = numpy.max([numpy.max(val_kn[k,0:N_k[k]]) for k in range(K)])
 
 # Test bin numbers
 good_bins = []
-binsMax = int ( 5*K )
-for tmpnbins in range(20,binsMax,20):
+for tmpnbins in range(5,100,20):
     print "Testing nbins =", tmpnbins
     delta = (val_max - val_min) / float(tmpnbins)
     # compute bin centers
@@ -159,7 +160,7 @@ for tmpnbins in range(20,binsMax,20):
     isgood = True
     for i in range(tmpnbins):
      #   print bin_center_i[i], numpy.sum(bin_kn==i)
-        if numpy.sum(bin_kn==i) < 20:
+        if numpy.sum(bin_kn==i) < 5:
             isgood = False
     if isgood:
         good_bins.append(tmpnbins)
@@ -204,12 +205,12 @@ for k in range(K):
 # Initialize MBAR.
 print "Running MBAR..."
 #print u_kln; quit()
-mbar = pymbar.MBAR(u_kln, N_k, verbose = True, method = 'adaptive', initialize='BAR', relative_tolerance=1e-3)
+mbar = pymbar.MBAR(u_kln, N_k, verbose = True, method = 'adaptive', initialize='BAR', relative_tolerance=1.0e-2)
 #mbar = pymbar.MBAR(u_kln, N_k, verbose = True, method = 'adaptive', initialize='BAR')
 #mbar = pymbar.MBAR(u_kln, N_k, verbose = True, method = 'Newton-Raphson')
 
 # Compute PMF in unbiased potential (in units of kT).
-(f_i, df_i) = mbar.computePMF(u_kn, bin_kn, nbins, uncertainties='from-normalization')
+(f_i, df_i) = mbar.computePMF(u_kn, bin_kn, nbins)
 
 # Write out PMF
 print "PMF (in units of kT)"
@@ -221,6 +222,6 @@ for i in range(nbins):
 
 pKfile = open("f(N).txt", 'w')
 for i in range(nbins):
-    pKfile.write(str(bin_center_i[i]) + "\t" + str(f_i[i]) + "\t" + str(df_i[i]) + "\n")
+    pKfile.write(str(bin_center_i[i]) + "\t" + str(f_i[i]) + "\n")
 pKfile.close()
 

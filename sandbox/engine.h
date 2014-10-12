@@ -8,17 +8,11 @@
 #include<TH1D.h>
 #include<TFile.h>
 #include<TProfile.h>
-using std::vector; 
-using std::endl; 
-using std::cout;
-using std::cerr; 
-using std::normal_distribution;
-using std::default_random_engine;  
 
 // system parameters 
 double L, delta; 
 int N; 
-vector<double> tx, ty, tz, t0, t_old ; 
+std::vector<double> tx, ty, tz, t0, t_old ; 
 
 // simulation parameters 
 int numSweeps, numSteps; 
@@ -27,7 +21,7 @@ int sampleRate, progressRate, equilibrationTime;
 int numBins ; 
 double binWidth, binOverlap; 
 double gaussVar, bias ; 
-vector<double> winMin, winMax, zmin,K ; 
+std::vector<double> winMin, winMax, zmin,K ; 
 double zstart, wmax,wmin,width, wmean, z ;
 double target, tol;
 int random_index ;
@@ -37,9 +31,9 @@ FILE * inFile;
 FILE * zFile;
 FILE * progressFile; 
 FILE * metaFile; 
-vector<FILE*> windowFiles; 
-vector<FILE*> histograms; 
-vector<TH1D*> zHists; 
+std::vector<FILE*> windowFiles; 
+std::vector<FILE*> histograms; 
+std::vector<TH1D*> zHists; 
 TFile* DataFile;
 TH1D* zHist;
 TH1D* rpHist; 
@@ -50,14 +44,14 @@ TH1D* normsHist;
 TProfile* corr; 
 
 const double PI = acos(-1.);
-int iseed ; 
-default_random_engine rng; 
+int seed = time(0); 
+std::default_random_engine rng (seed);
 
 void readInParameters() {
 
 	inFile = fopen("parameters.txt","r"); 
 	if (inFile == NULL) { 
-		cerr << "parameter file not found!" << endl; 
+		std::cerr << "parameter file not found!" << std:: endl; 
 		exit(1); 
 	}
 	
@@ -71,7 +65,6 @@ void readInParameters() {
 		else if (!strcmp(str,"sampleRate")) fscanf(inFile,"%d",&sampleRate); 
 		else if (!strcmp(str,"progressRate")) fscanf(inFile,"%d",&progressRate); 
 		else if (!strcmp(str,"equilibrationTime")) fscanf(inFile,"%d",&equilibrationTime); 
-		else if (!strcmp(str,"iseed"))	fscanf(inFile, "%d", &iseed ) ;  
 		else if (!strcmp(str,"gaussVar")) fscanf(inFile,"%lf",&gaussVar); 
 		else if (!strcmp(str,"numWindows")) fscanf(inFile,"%d",&numWindows); 
 		else if (!strcmp(str,"numPasses")) fscanf(inFile,"%d",&numPasses); 
@@ -127,8 +120,7 @@ void init() {
 	numFrames = numWindows * numPasses * numSteps ; 
 	binWidth = (1. - zstart)/numBins; 
 	binOverlap = 1 * binWidth; 
-	srand(iseed); 
-	rng.seed(iseed); 
+	srand(seed); 
 
 	zFile = fopen("uwham.dat","w");
 
@@ -187,7 +179,7 @@ void perturb(int index) {
 	t_old[1] = ty[index]; 
 	t_old[2] = tz[index]; 
 
-	normal_distribution<double> gaus(0.0,gaussVar);
+	std::normal_distribution<double> gaus(0.0,gaussVar);
 
 	tx[index] += gaus(rng);
 	gaus.reset(); // needed for independent rv's 
@@ -426,15 +418,15 @@ void writeZHist() {
 }
 
 void reset() { 
-	//iseed = time(0); 
-	//rng.seed(iseed); 
-	//srand(iseed); 
+	seed = time(0); 
+	std::default_random_engine rng (seed); 
+	srand(seed); 
 	tx.assign(N,0); 
 	ty.assign(N,0); 
 	tz.assign(N,1); 
 
 	if(getZ() < 1.0 ) {
-		cout<< "can't normalize? "<< endl; exit(1); 
+		std::cout<< "can't normalize? "<< std::endl; exit(1); 
 	}
 
 }
@@ -467,7 +459,7 @@ void write_metadata() {
 
 	for (int j = 0 ; j < numWindows; j++ ) {
 		char data[100]; 
-		sprintf(data, "/Users/paulglen/github/WLC/umbrellaSampling_harmonic/window_%d\t%f\t%f\t%d\t%f\t\n",j,zmin[j],K[j],0,delta) ; 
+		sprintf(data, "/Users/paulglen/github/actin/test/window_%d\t%f\t%f\t%d\t%f\t\n",j,zmin[j],K[j],0,delta) ; 
 		fputs(data,metaFile) ; 
 	}
 	fclose(metaFile) ;
@@ -475,13 +467,13 @@ void write_metadata() {
 }
 
 void checkNorms() { 
-	// enforce normality of the t_i to within 1e-4 %  
 	for(int i = 0; i < N; i++) {
 		
 		if(abs(dot(tx[i],ty[i],tz[i],tx[i],ty[i],tz[i]) - 1.0) > 1e-6) {
 
-			cerr << " vector " << i << "failed to be normal " << std::endl; 
-			cout << "instead has magnitude " << dot(tx[i],ty[i],tz[i],tx[i],ty[i],tz[i]) << endl;
+			std::cerr << " vector " << i << "failed to be normal " << std::endl; 
+			std::cout << "instead has magnitude " << dot(tx[i],ty[i],tz[i],tx[i],ty[i],tz[i]);
+			std::cout << std::endl; 
 			exit(1); 
 		}
 	}

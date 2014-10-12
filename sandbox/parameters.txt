@@ -3,7 +3,7 @@ L 					0.1
 N 					100 
 
 # simulation parameters 
-numSweeps			10000
+numSweeps			50000
 sampleRate			200 
 progressRate		100000
 equilibrationTime	40000
@@ -13,7 +13,7 @@ gaussVar 			50
 numWindows 			30
 numPasses 			1
 zstart 				0.7
-bias				17
+bias				15
 
 # extras 
 numBins 			1000 
