@@ -1,0 +1,19 @@
+# system parameters 
+L 					0.1
+N 					100 
+
+# simulation parameters 
+numSweeps			500000
+sampleRate			400 
+progressRate		10000
+equilibrationTime	400
+iseed				2048
+gaussVar 			40
+
+# umbrella sampling 
+numWindows 			50
+zstart 				0.5
+bias				15.5
+
+# extras 
+numBins 			1000 

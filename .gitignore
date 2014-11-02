@@ -6,3 +6,11 @@ window*
 output.dat
 *.png
 heights.dat
+*.pyc 
+*.mp4
+*.xml
+actin 
+data.root
+hist*
+fe*
+*.pdf 
