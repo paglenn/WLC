@@ -1,59 +1,64 @@
 #include<iostream>
 #include<cmath>
 #include<vector>
-#include<cstdio>
 #include<string>
 #include<cstdlib>
 #include<random>
 #include<TH1D.h>
 #include<TFile.h>
-#include<TProfile.h>
-using std::cout; 
-using std::endl; 
+#include<ctime>
 using std::vector; 
-//using namespace std; 
+using std::endl; 
+using std::cout;
+using std::cerr; 
+using std::normal_distribution;
+using std::default_random_engine;  
 
 // system parameters 
 double L, delta, q; 
 int N; 
-vector<double> tx, ty, tz, t0, t_old ; 
+vector<double> tx, ty, tz, t0x,t0y,t0z, tox,toy,toz ; 
 
 // simulation parameters 
-unsigned long long int numSteps , numSweeps, numFrames; 
-int numPasses, numWindows; 
-unsigned long int sampleRate, progressRate, equilibrationTime; 
+int numSweeps, numSteps; 
+int numPasses, numWindows, numFrames; 
+int sampleRate, progressRate, equilibrationTime; 
 int numBins ; 
 double binWidth, binOverlap; 
-double gaussVar; 
-vector<double> winMin, winMax, zmin; 
-double wmax,wmin,width, wmean, z ;
+double gaussVar, bias ; 
+vector<double> winMin, winMax, zmin,K ; 
+double zstart, wmax,wmin,width, wmean, z ;
 double target, tol;
 int random_index ;
+
+// hard conditions on certain variables
+double RP, TP, RPTP ; 
 
 // Data files 
 FILE * inFile; 
 FILE * zFile;
 FILE * progressFile; 
+FILE * metaFile; 
+vector<FILE*> windowFiles; 
+vector<FILE*> histograms; 
+vector<TH1D*> zHists; 
 TFile* DataFile;
 TH1D* zHist;
-TH1D* rpxHist; 
-TH1D* rpyHist; 
-TH1D* tpxHist; 
-TH1D* tpyHist; 
+TH1D* rpHist; 
+TH1D* tpHist; 
 TH1D* rptpHist; 
 TH1D* cosHist ; 
 TH1D* normsHist; 
-TProfile* corr; 
-TProfile* zTimeSeries; 
 
-int seed = time(0); 
-std::default_random_engine rng (seed);
+const double PI = acos(-1.);
+int iseed ; 
+default_random_engine generator; 
 
 void readInParameters() {
 
 	inFile = fopen("parameters.txt","r"); 
 	if (inFile == NULL) { 
-		std::cerr << "parameter file not found!" << std:: endl; 
+		cerr << "parameter file not found!" << endl; 
 		exit(1); 
 	}
 	
@@ -63,88 +68,49 @@ void readInParameters() {
 		if ( *str == '#')  fgets(str,100,inFile) ; 
 		else if ( *str == 'L') fscanf(inFile,"%lf",&L);
 		else if ( *str == 'N') fscanf(inFile,"%d", &N); 
-		else if (!strcmp(str,"numSweeps")) fscanf(inFile,"%lld",&numSweeps); 
-		else if (!strcmp(str,"sampleRate")) fscanf(inFile,"%ld",&sampleRate); 
-		else if (!strcmp(str,"progressRate")) fscanf(inFile,"%ld",&progressRate); 
-		else if (!strcmp(str,"equilibrationTime")) fscanf(inFile,"%ld",&equilibrationTime); 
+		else if (!strcmp(str,"numSweeps")) fscanf(inFile,"%d",&numSweeps); 
+		else if (!strcmp(str,"sampleRate")) fscanf(inFile,"%d",&sampleRate); 
+		else if (!strcmp(str,"progressRate")) fscanf(inFile,"%d",&progressRate); 
+		else if (!strcmp(str,"equilibrationTime")) fscanf(inFile,"%d",&equilibrationTime); 
+		else if (!strcmp(str,"iseed"))	fscanf(inFile, "%d", &iseed ) ;  
 		else if (!strcmp(str,"gaussVar")) fscanf(inFile,"%lf",&gaussVar); 
 		else if (!strcmp(str,"numWindows")) fscanf(inFile,"%d",&numWindows); 
 		else if (!strcmp(str,"numPasses")) fscanf(inFile,"%d",&numPasses); 
+		else if (!strcmp(str,"zstart")) fscanf(inFile,"%lf",&zstart); 
+		else if (!strcmp(str,"bias")) fscanf(inFile,"%lf",&bias); 
 		else if (!strcmp(str,"numBins")) fscanf(inFile,"%d",&numBins); 
 		//else std::cout<<"whoami" << str<<std::endl;
 	}
 
 }
-
 void createHistograms() {
 	DataFile = new TFile("data.root","recreate"); 
 	zHist = new TH1D(); 
-	rpxHist = new TH1D(); 
-	rpyHist = new TH1D(); 
-	tpxHist = new TH1D(); 
-	tpyHist = new TH1D(); 
+	rpHist = new TH1D(); 
+	tpHist = new TH1D(); 
 	rptpHist = new TH1D(); 
 	cosHist = new TH1D(); 
 	normsHist = new TH1D(); 
 
-	corr = new TProfile(); 
-	zTimeSeries = new TProfile() ; 
 
 	cosHist->SetBit(TH1::kCanRebin);
-	rpxHist->SetBit(TH1::kCanRebin);
-	rpyHist->SetBit(TH1::kCanRebin);
-	tpxHist->SetBit(TH1::kCanRebin);
-	tpyHist->SetBit(TH1::kCanRebin);
+	rpHist->SetBit(TH1::kCanRebin);
+	tpHist->SetBit(TH1::kCanRebin);
 	rptpHist->SetBit(TH1::kCanRebin);
 	zHist->SetBit(TH1::kCanRebin);
-    corr->SetBit(TH1::kCanRebin); 
-	zTimeSeries->SetBit(TH1::kCanRebin); 
 	cosHist->SetBins(100,0.9,1.0);
-	rpxHist->SetBins(100,-0.01,0.01);
-	rpyHist->SetBins(100,-0.01,0.01);
-	tpyHist->SetBins(100,-0.01,0.01);
-	tpxHist->SetBins(100,-0.01,0.01);
+	rpHist->SetBins(100,-0.01,0.01);
+	tpHist->SetBins(100,-0.01,0.01);
 	rptpHist->SetBins(100,-0.01,0.01);
-	zHist->SetBins(numBins,0.7,1.0) ;
-    corr->SetBins(100,0.95,1.0); 
-}
+	zHist->SetBins(numBins,0.8,1.0) ;
 
-void init() {
-
-	readInParameters();
-	createHistograms(); 
-
-	delta = L/double(N); 
-	q = 1./delta; 
-	numSteps = numSweeps * N; 
-	gaussVar *= delta; 
-	numFrames = numWindows * numPasses * numSteps ; 
-	binWidth = 1./numBins; 
-	binOverlap = 5 * binWidth; 
-	srand(seed); 
-
-	zFile = fopen("fe_z.dat","w");
-
-	progressFile = fopen("progress.out","w"); 
-
-	t0.assign(3,0.); 
-	t0[2] = 1.; 
-	t_old = t0; 
-	tx.assign(N,0.); 
-	ty.assign(N,0.); 
-	tz.assign(N,1.);
-
-	
-	for(int j = 0.; j < numWindows; j++ ) {
-		wmax = double(j+1)/numWindows + binOverlap;
-		wmin = double(j)/numWindows;
-		winMin.push_back( wmin ) ; 
-		winMax.push_back( wmax ) ;
-		double min_loc = 0.5*(wmax + wmin);
-		zmin.push_back(min_loc); 
-		if(j +1==numWindows) winMax[j] = 1.0; 
+	//std::cout<<"Initialized" << std::endl;
+	for(int i = 0.; i < numWindows; i++) {
+		char hname[10]; 
+		sprintf(hname,"z_%d",i);
+		zHists.push_back( new TH1D(hname,hname,numBins,0.,N) ); 
+		zHists[i]->SetBit(TH1::kCanRebin); 
 	}
-	
 }
 
 void normalize(int index) {
@@ -156,76 +122,22 @@ void normalize(int index) {
 
 }
 
-vector<double> perturb(int index) { 
-
-	t_old[0] = tx[index]; 
-	t_old[1] = ty[index]; 
-	t_old[2] = tz[index]; 
-
-	std::normal_distribution<double> gaus(0.0,gaussVar);
-	
-	vector<double> v; 
-	for(int i =0; i < 3; i++) {
-		v.push_back(gaus(rng)); 
-		gaus.reset(); 
-	}
-	tx[index] += v[0];
-	ty[index] += v[1];
-	tz[index] += v[2];
-
-	//normalize(index);
-	return v ; 
-
-}
-
-void compensate(vector<double> v, int i_exc) {
-
-	for ( int i = 1 ; i < N-1; i++ ) {
-		if ( i != i_exc) { 
-
-			tx[i]  -= v[0] / (N-3) ; 
-			ty[i] -= v[1] / (N-3 ) ; 
-			tz[i] -= v[2] / (N-3 ) ; 
-		} 
-	}
-}
-
-
-
-double dot(double x1, double y1, double z1, double x2, double y2, double z2) {
-
-	double sum = x1*x2 + y1*y2 + z1*z2; 
-
-	return sum; 
-}
-
-double t_dot(int index_1, int index_2 = -1 ) {
-	
-	double sum; 
-	if (index_2 == -1) {
-		sum = tx[index_1]*t_old[0] + ty[index_1]*t_old[1] + tz[index_1] * t_old[2] ;  
-	} else {
-		sum = tx[index_1]*tx[index_2] + ty[index_1]*ty[index_2] + tz[index_1] * tz[index_2] ; 
-	}
-	return sum; 
-}
-
 double getZ() {
 	// height of polymer along z-axis  
 	double zsum  = 0.;
 	for(int j = 0; j < N; j++) zsum += tz[j] ;
-	return zsum/float(N); 
+	return zsum; 
 }
 
-double getRP(int elem) {
+double getRP() {
 	// projection of eed vector into the plane 
 	double rpx = 0.,rpy = 0.;
 	for(int j = 0; j < N; j++) {
 		rpx += tx[j]; 
 		rpy += ty[j];
 	}
-	double ans = (elem == 0) ? rpx : rpy; 
-	return ans/float(N); 
+	double rp = sqrt(rpx*rpx+rpy*rpy);
+	return rp/float(N);
 }
 
 double getRPTP() {
@@ -243,28 +155,164 @@ double getRPTP() {
 }
 
 	
-double getTP(int elem) { 
+double getTP() { 
 	//perpendicular component of final segment 
-    double ans = (elem == 0) ? tx[N-1] : ty[N-1] ;
-	return ans; 
+	double tp = sqrt(tx[N-1]*tx[N-1] + ty[N-1]*ty[N-1]); 
+	return tp; 
 }
 
 
-double getE() { 
-	double E = 0; 
-	for( int i = 0; i +1 < N; i++ ) {
+void init() {
 
-		E -= t_dot(i, i+1) ; 
+	readInParameters();
+//	std::cout<<"Initialized" << std::endl;
+
+	delta = L/double(N); 
+	q  = 1./delta; 
+	numSteps = numSweeps * N; 
+	gaussVar *= delta; 
+	numFrames = numWindows * numPasses * numSteps ; 
+	binWidth = (1. - zstart)/numBins; 
+	binOverlap = 1 * binWidth; 
+	srand(iseed); 
+	generator.seed(iseed); 
+
+	zFile = fopen("uwham.dat","w");
+
+	progressFile = fopen("progress.out","w"); 
+	if ( progressRate > numFrames/1000 ) progressRate = numFrames / 1000 ; 
+
+	tx.assign(N,0.); 
+	ty.assign(N,0.); 
+	tz.assign(N,1.);
+	t0x.assign(N,0.); 
+	t0y.assign(N,0.); 
+	t0z.assign(N,1.);
+	tox.assign(N,0.); 
+	toy.assign(N,0.); 
+	toz.assign(N,1.);
+	// initialize to a random configuration 
+	for (int index = 0 ; index < N ; index++ ) { 
+
+		normal_distribution<double> gaus(0.0,1);
+
+		tx[index] = gaus(generator);
+		gaus.reset(); // needed for independent rv's 
+		ty[index] = gaus(generator);
+		gaus.reset();
+		tz[index] = gaus(generator);
+		gaus.reset();
+
+		normalize(index);
+		t0x[index] = tx[index]; 
+		tox[index] = tx[index];
+		t0y[index] = ty[index]; 
+		toy[index] = ty[index]; 
+		t0z[index] = tz[index];
+		toz[index] = tz[index];
 	}
 
-	return q*E; 
+	RP = getRP() ; 
+	RPTP = getRPTP() ; 
+	TP = getTP() ; 
+
+	
+	for(int j = 0.; j < numWindows; j++ ) {
+		double wmax =N 	* ( zstart + (1-zstart) * double(j+1)/numWindows) ;
+		double wmin =N	* ( zstart + (1-zstart) * double(j)/numWindows) ;
+		//binOverlap = (wmax - wmin) / numBins; 
+		//std::cout<<wmin<<"\t"<<wmax<<std::endl; 
+		winMin.push_back( wmin ) ; 
+		winMax.push_back( wmax ) ;
+		double min_loc = 0.5*(wmax + wmin);
+		zmin.push_back(min_loc); 
+		//if(j +1==numWindows) winMax[j] = N; 
+
+		K.push_back(bias); 
+
+		char fileName[15]; 
+		sprintf(fileName,"window_%d",j); 
+		windowFiles.push_back(fopen(fileName,"w")); 
+		
+		sprintf(fileName,"hist_%d",j); 
+		histograms.push_back(fopen(fileName,"w")); 
+	}
+
+	createHistograms(); 
+	
+}
+
+double V_bias(double z, int wj ) { 
+	return 0.5*K[wj]*pow(z - zmin[wj], 2.);
+}
+/*
+void normalize(int index) {
+
+	double norm = sqrt(tx[index]*tx[index] + ty[index]*ty[index] + tz[index]*tz[index] );
+	tx[index] /= norm; 
+	ty[index] /= norm; 
+	tz[index] /= norm; 
+
+}
+*/
+void perturb(int index) { 
+
+	tox[index] = tx[index]; 
+	toy[index] = ty[index]; 
+	toz[index] = tz[index]; 
+
+	normal_distribution<double> gaus(0.0,gaussVar);
+
+	tx[index] += gaus(generator);
+	gaus.reset(); // needed for independent rv's 
+	ty[index] += gaus(generator);
+	gaus.reset();
+	tz[index] += gaus(generator);
+	gaus.reset();
+
+	normalize(index);
+}
+
+double dot(double x1, double y1, double z1, double x2, double y2, double z2) {
+
+	double sum = x1*x2 + y1*y2 + z1*z2; 
+
+	return sum; 
+}
+
+
+double deltaE(int index, int w_index, double z_prev) {
+	
+	double E_old = 0, E_new = 0  ; 
+	
+	if( index+1 != N) {
+		E_old -= dot(tx[index+1],ty[index+1],tz[index+1],tox[index],toy[index],toz[index]) ;
+		E_new -= dot(tx[index+1],ty[index+1],tz[index+1],tx[index],ty[index],tz[index]) ;
+	}
+	
+	if( index != 0) {
+		E_old -= dot(tx[index-1],ty[index-1],tz[index-1],tox[index],toy[index],toz[index]) ;
+		E_new -= dot(tx[index-1],ty[index-1],tz[index-1],tx[index],ty[index],tz[index]) ;
+	}
+
+	double z_new = getZ(); 
+	//double dVz = ( z_new < winMin[w_index] || z_new > winMax[w_index] ) ? bigNum : 0.;
+	double dVz  = V_bias(z_new,w_index) - V_bias(z_prev,w_index) ; 
+	//std::cout<<z_new<<z_prev<<std::endl; exit(1);
+	//std::cout<<"dE: " << ( E_new - E_old) /delta << std::endl;
+	//std::cout<<"V : "<<  dVz << std::endl; 
+	//std::cout<< bias << std:: endl ; exit(1);
+
+
+	return q*E_new- q*E_old + dVz;
+
 }
 
 double revert(int index) {
 
-	tx[index] = t_old[0]; 
-	ty[index] = t_old[1]; 
-	tz[index] = t_old[2]; 
+	tx[index] = tox[index]; 
+	ty[index] = toy[index]; 
+	tz[index] = toz[index]; 
 
 	return 0; 
 
@@ -272,13 +320,10 @@ double revert(int index) {
 
 void adjustZ(int w_index) {
 
-	double wmax = winMax[w_index] ; 
-	double wmin = winMin[w_index] ;
-	double width = wmax - wmin ;
-	double wmean = 0.5*(wmax + wmin) ; 
+	double wmean = zmin[w_index] ; 
 	double z = 0.; 
-	double target = wmean + width/2. * (2*rand()/double(RAND_MAX) - 1.); // (-1,1)
-	double tol = width/4.;
+	double target = wmean ; // (-1,1)
+	double tol = delta;
 
 	while(fabs(z - target) > tol) {
 
@@ -287,17 +332,20 @@ void adjustZ(int w_index) {
 		double z_new = getZ(); 
 		double dz = z_new - z; 
 
-		if(z > target & dz > 0 ) dz = revert(random_index); 
-		if(z < target & dz < 0 ) dz = revert(random_index); 
+		if(z > target && dz > 0 ) dz = revert(random_index); 
+		if(z < target && dz < 0 ) dz = revert(random_index); 
 
 		if(dz!=0) z = z_new; 
 	}
+
+	RP = getRP(); 
+	TP = getTP(); 
+	RPTP = getRPTP(); 
 }
 
 void write_cosines() {
 	for(int j =0; j< N-1; j++) {
-		//double tcos = dot(tx[j],ty[j],tz[j],tx[j+1],ty[j+1],tz[j+1]);  
-		double tcos = t_dot(j,j+1); 
+		double tcos = dot(tx[j],ty[j],tz[j],tx[j+1],ty[j+1],tz[j+1]);  
 		cosHist->Fill(tcos); 
 	}
 }
@@ -309,94 +357,103 @@ void computeNorms() {
 	}
 }
 
-void writeTP() {
+void write_TP() {
 
-	double tpx = getTP(0); 
-	double tpy = getTP(1); 
-	tpxHist->Fill(tpx);
-	tpyHist->Fill(tpy);
+	double tp = getTP(); 
+	tpHist->Fill(tp);
 }
 
-void writeRP() {
+void write_RP() {
 
-	double rpx = getRP(0); 
-    double rpy = getRP(1); 
-    
-	rpxHist->Fill(rpx);
-    rpyHist->Fill(rpy); 
+	double rp = getRP(); 
+	rpHist->Fill(rp);
 }
 
-void writeRPTP() {
+void write_RPTP() {
 
 	double rptp = getRPTP(); 
 	rptpHist->Fill(rptp);
 }
 
-void writeCorrelator() {
-    int rmax = N/10 ; 
-	double c_r ; 
-	for(int r = 0; r <= rmax; r++) {
-		for(int i = 0; i < N-r; i++) {
-			//c_r = dot(tx[i],ty[i],tz[i],tx[i+r],ty[i+r],tz[i+r]);
-			c_r = t_dot(i,i+r); 
-            corr->Fill(r,c_r);
-        }
-    }
+bool diff(double a, double b) { 
+	if (fabs(a-b)  > 1e-5) return true; 
+	else return false; 
 }
 
-bool mc_step(int w_index = 0) {
+// monte carlo move and acceptance/rejection criteria 
+bool umbrella_mc_step(int w_index = numWindows-1) {
 
-	random_index = 1 + rand() % (N-2); // random int (1,N-2)  
+	double z_prev = getZ() ; 
+	random_index = 1 + rand() % (N-1); // random int (1,N-1)  
 
-	double E_old = getE() ; 
-	double rp_old_x = getRP(0); 
-	double rp_old_y = getRP(1); 
-	vector<double> dv = perturb(random_index); 
+	perturb(random_index); 
 
-	compensate( dv, random_index) ; 
+	double dE = deltaE(random_index, w_index, z_prev ); 
+
+	// check if things have been changed 
+	if (diff(RP,getRP()) || diff(TP,getTP()) || diff(RPTP,getRPTP()) ) {
+			revert(random_index) ; 
+			return false; 
 	
-	for(int i = 0; i +1 < N; i++ ) normalize(i) ; 
-	
-	double diff_tol = 1e-4; 
-	if(fabs ( getRP(0) - rp_old_x) > diff_tol | fabs( getRP(1) - rp_old_y) > diff_tol ) {
-
-		cout <<" for x "; 
-		cout << "old: " << rp_old_x; 
-		cout << "new: " << getRP(0) ;  
-		cout << " for y: " ; 
-		cout << "old : " << rp_old_y; 
-		cout << "new: " << getRP(1) ; 
-		cout << endl; 
-		exit(1); 
 	}
-	
-	double dE = getE() - E_old;  
 
-	// Metropolis criterion 
+	// Metropolis part 
 	if(dE <= 0.) return true; 
-	else if (rand()/double(RAND_MAX) > exp(-dE) ) 
-	{
+	else if (rand()/double(RAND_MAX) > exp(-dE) ) {
+
 		revert(random_index); 
 		return false;
 	}
+	
 
 	return true; 
 
 }
 
-void writeZ(int timesteps ) { 
-	zHist->Fill(getZ()); 
-	zTimeSeries->Fill(timesteps,getZ()); 
+
+double getE()  { 
+	double E = 0. ; 
+	for ( int i = 0; i+1 < N; i++) {
+		E -= dot(tx[i],ty[i],tz[i],tx[i+1],ty[i+1],tz[i+1]); 
+	}
+	return q*E ; 
 }
 
-void WriteEventData(int timesteps) {
+double getBiasedE(int wi ) { 
 
-	write_cosines();
-    writeCorrelator();
-	writeRP();
-	writeTP();
-	writeRPTP();
-	writeZ(timesteps); 
+	return getE() + V_bias(getZ(),wi) ; 
+}
+
+void writeZ(int step, int wi ) { 
+	//cout<<"hi"<<endl;
+	double z = getZ(); 
+	//double E = getE(); 
+	//cout<<"hi"<<endl;
+	zHists[wi]->Fill(z); 
+
+	//char zval[30]; 
+	//sprintf(zval,"%d\t%f\t%f\n",step,z,E); 
+	//fputs(zval, windowFiles[wi]); 
+	//cout<<"hi"<<endl;
+}
+
+void writeZFile(int step, int wi) {
+	double z = getZ(); 
+	double E = getE(); 
+	char zString[40];
+	sprintf(zString,"%d\t%f\t%f\n",step,z,E); 
+	fputs(zString,windowFiles[wi]);
+
+}
+
+void WriteEventData(int step, int wi ) {
+
+	//write_cosines();
+	//write_RP();
+	//write_TP();
+	//write_RPTP();
+	writeZ(step,wi); 
+	writeZFile(step,wi); 
 }
 
 void writeZHist() {
@@ -405,47 +462,79 @@ void writeZHist() {
 
 		char histVals[50]; 
 		if (zHist->GetBinContent(i) != 0) {
-
-			double binCenter = zHist->GetBinCenter(i); 
-			double logP = - log( zHist->GetBinContent(i)) ; 
-			sprintf(histVals,"%f %f\n",binCenter,logP) ; 
+			float binCenter = zHist->GetBinCenter(i); 
+			float logP = log ( zHist->GetBinContent(i) ) ; 
+			sprintf(histVals,"%f %f\n",binCenter,-logP) ; 
 			fputs(histVals,zFile) ; 
 		}
+	}
+}
+/*
+void reset() { 
 
+	// must re-seed after a few billion steps 
+	iseed = time(0); 
+	srand(iseed);
+	generator.seed(iseed);
+	tx.assign(N,0); 
+	ty.assign(N,0); 
+	tz.assign(N,1); 
+
+	if(getZ() < 1.0 ) {
+		cout<< "can't normalize? "<< endl; 
+		exit(1); 
 	}
 
 }
-
+*/
 void writeHistograms() {
-	// normalize all histograms  
-	computeNorms(); 
 
-	rpxHist -> Scale(1./rpxHist->Integral("width")) ; 
-	rpyHist -> Scale(1./rpyHist->Integral("width")) ; 
-	tpxHist -> Scale(1./tpxHist->Integral("width")) ; 
-	tpyHist -> Scale(1./tpyHist->Integral("width")) ; 
-	rptpHist -> Scale(1./rptpHist->Integral("width") ) ; 
-	cosHist -> Scale(1./cosHist->Integral("width")) ; 
-	zHist->Scale(1./zHist->Integral("width")) ; 
+	for(int j = 0; j < numWindows; j++ ) {
 
-	
-	rpxHist->Write("rpx");
-	rpyHist->Write("rpy");
-	rptpHist->Write("rptp");
-	tpxHist->Write("tpx");
-	tpyHist->Write("tpy");
-	cosHist->Write("dcos");
-	zHist->Write("z"); 
-    corr->Write("corr");
-	zTimeSeries->Write("z_ts"); 
-	normsHist->Write("t_norm"); 
+		for(int i = 1; i <= zHists[j]->GetNbinsX(); i++) {
 
-	writeZHist(); // do AFTER z hist has been scaled down to a probability dist 
+			double binCenter = zHists[j]->GetBinCenter(i);
+			double binContent = zHists[j]->GetBinContent(i); 
+
+			char histVals[25]; 
+			if(binContent != 0 ) {
+				sprintf(histVals,"%f\t%f\n",binCenter,binContent); 
+				fputs(histVals,histograms[j]) ;
+
+			}
+
+		}
+		zHists[j]->Write(); 
+	}
+}
+
+void write_metadata() {
+
+	metaFile = fopen("metadata.dat","w") ; 
+
+	for (int j = 0 ; j < numWindows; j++ ) {
+		char data[100]; 
+		sprintf(data, "/Users/paulglen/github/WLC/umbrellaSampling_harmonic/window_%d\t%f\t%f\t%d\t%f\t\n",j,zmin[j],K[j],0,delta) ; 
+		fputs(data,metaFile) ; 
+	}
+	fclose(metaFile) ;
 
 }
 
+void checkNorms() { 
+	// enforce normality of the t_i to within 1e-4 %  
+	for(int i = 0; i < N; i++) {
+		
+		if(fabs(dot(tx[i],ty[i],tz[i],tx[i],ty[i],tz[i]) - 1.0) > 1e-6) {
+
+			cerr << " vector " << i << "failed to be normal " << std::endl; 
+			cout << "instead has magnitude " << dot(tx[i],ty[i],tz[i],tx[i],ty[i],tz[i]) << endl;
+			exit(1); 
+		}
+	}
+}
+
 int cleanup() {
-	// housekeeping 
 	fclose(zFile); 
 	fclose(progressFile);
 	DataFile->Close();
