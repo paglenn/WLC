@@ -4,8 +4,6 @@
 #include<string>
 #include<cstdlib>
 #include<random>
-#include<TH1D.h>
-#include<TFile.h>
 #include<ctime>
 using std::vector; 
 using std::endl; 
@@ -23,7 +21,7 @@ vector<double> tx, ty, tz, t0x,t0y,t0z, tox,toy,toz ;
 int numSweeps, numSteps; 
 int numPasses, numWindows, numFrames; 
 int sampleRate, progressRate, equilibrationTime; 
-int numBins ; 
+int nbins ; 
 double binWidth, binOverlap; 
 double gaussVar, bias ; 
 vector<double> winMin, winMax, zmin,K ; 
@@ -41,14 +39,7 @@ FILE * progressFile;
 FILE * metaFile; 
 vector<FILE*> windowFiles; 
 vector<FILE*> histograms; 
-vector<TH1D*> zHists; 
-TFile* DataFile;
-TH1D* zHist;
-TH1D* rpHist; 
-TH1D* tpHist; 
-TH1D* rptpHist; 
-TH1D* cosHist ; 
-TH1D* normsHist; 
+vector< vector<double> > zHists; 
 
 const double PI = acos(-1.);
 int iseed ; 
@@ -78,38 +69,16 @@ void readInParameters() {
 		else if (!strcmp(str,"numPasses")) fscanf(inFile,"%d",&numPasses); 
 		else if (!strcmp(str,"zstart")) fscanf(inFile,"%lf",&zstart); 
 		else if (!strcmp(str,"bias")) fscanf(inFile,"%lf",&bias); 
-		else if (!strcmp(str,"numBins")) fscanf(inFile,"%d",&numBins); 
+		else if (!strcmp(str,"nbins")) fscanf(inFile,"%d",&nbins); 
 		//else std::cout<<"whoami" << str<<std::endl;
 	}
 
 }
+
 void createHistograms() {
-	DataFile = new TFile("data.root","recreate"); 
-	zHist = new TH1D(); 
-	rpHist = new TH1D(); 
-	tpHist = new TH1D(); 
-	rptpHist = new TH1D(); 
-	cosHist = new TH1D(); 
-	normsHist = new TH1D(); 
 
-
-	cosHist->SetBit(TH1::kCanRebin);
-	rpHist->SetBit(TH1::kCanRebin);
-	tpHist->SetBit(TH1::kCanRebin);
-	rptpHist->SetBit(TH1::kCanRebin);
-	zHist->SetBit(TH1::kCanRebin);
-	cosHist->SetBins(100,0.9,1.0);
-	rpHist->SetBins(100,-0.01,0.01);
-	tpHist->SetBins(100,-0.01,0.01);
-	rptpHist->SetBins(100,-0.01,0.01);
-	zHist->SetBins(numBins,0.8,1.0) ;
-
-	//std::cout<<"Initialized" << std::endl;
 	for(int i = 0.; i < numWindows; i++) {
-		char hname[10]; 
-		sprintf(hname,"z_%d",i);
-		zHists.push_back( new TH1D(hname,hname,numBins,0.,N) ); 
-		zHists[i]->SetBit(TH1::kCanRebin); 
+		zHists.push_back( vector<double>(nbins, 0.0) ) ; 
 	}
 }
 
@@ -172,7 +141,7 @@ void init() {
 	numSteps = numSweeps * N; 
 	gaussVar *= delta; 
 	numFrames = numWindows * numPasses * numSteps ; 
-	binWidth = (1. - zstart)/numBins; 
+	binWidth = (1. - zstart)/nbins; 
 	binOverlap = 1 * binWidth; 
 	srand(iseed); 
 	generator.seed(iseed); 
@@ -220,7 +189,7 @@ void init() {
 	for(int j = 0.; j < numWindows; j++ ) {
 		double wmax =N 	* ( zstart + (1-zstart) * double(j+1)/numWindows) ;
 		double wmin =N	* ( zstart + (1-zstart) * double(j)/numWindows) ;
-		//binOverlap = (wmax - wmin) / numBins; 
+		//binOverlap = (wmax - wmin) / nbins; 
 		//std::cout<<wmin<<"\t"<<wmax<<std::endl; 
 		winMin.push_back( wmin ) ; 
 		winMax.push_back( wmax ) ;
@@ -298,10 +267,6 @@ double deltaE(int index, int w_index, double z_prev) {
 	double z_new = getZ(); 
 	//double dVz = ( z_new < winMin[w_index] || z_new > winMax[w_index] ) ? bigNum : 0.;
 	double dVz  = V_bias(z_new,w_index) - V_bias(z_prev,w_index) ; 
-	//std::cout<<z_new<<z_prev<<std::endl; exit(1);
-	//std::cout<<"dE: " << ( E_new - E_old) /delta << std::endl;
-	//std::cout<<"V : "<<  dVz << std::endl; 
-	//std::cout<< bias << std:: endl ; exit(1);
 
 
 	return q*E_new- q*E_old + dVz;
@@ -343,40 +308,8 @@ void adjustZ(int w_index) {
 	RPTP = getRPTP(); 
 }
 
-void write_cosines() {
-	for(int j =0; j< N-1; j++) {
-		double tcos = dot(tx[j],ty[j],tz[j],tx[j+1],ty[j+1],tz[j+1]);  
-		cosHist->Fill(tcos); 
-	}
-}
-
-void computeNorms() { 
-
-	for (int ii = 1; ii < N; ii++ ) {
-		normsHist->Fill(tx[ii]*tx[ii] + ty[ii] * ty[ii] + tz[ii]*tz[ii]) ;   
-	}
-}
-
-void write_TP() {
-
-	double tp = getTP(); 
-	tpHist->Fill(tp);
-}
-
-void write_RP() {
-
-	double rp = getRP(); 
-	rpHist->Fill(rp);
-}
-
-void write_RPTP() {
-
-	double rptp = getRPTP(); 
-	rptpHist->Fill(rptp);
-}
-
 bool diff(double a, double b) { 
-	if (fabs(a-b)  > 1e-5) return true; 
+	if (fabs(a-b)  > 1e-6) return true; 
 	else return false; 
 }
 
@@ -390,7 +323,7 @@ bool umbrella_mc_step(int w_index = numWindows-1) {
 
 	double dE = deltaE(random_index, w_index, z_prev ); 
 
-	// check if things have been changed 
+	// keeping RP, TP, RPTP constant here 
 	if (diff(RP,getRP()) || diff(TP,getTP()) || diff(RPTP,getRPTP()) ) {
 			revert(random_index) ; 
 			return false; 
@@ -425,16 +358,10 @@ double getBiasedE(int wi ) {
 }
 
 void writeZ(int step, int wi ) { 
-	//cout<<"hi"<<endl;
 	double z = getZ(); 
-	//double E = getE(); 
-	//cout<<"hi"<<endl;
-	zHists[wi]->Fill(z); 
+	double bin_index = floor(z/(double) N * 1000) ; 
 
-	//char zval[30]; 
-	//sprintf(zval,"%d\t%f\t%f\n",step,z,E); 
-	//fputs(zval, windowFiles[wi]); 
-	//cout<<"hi"<<endl;
+	zHists[wi][bin_index] += 1 ; 
 }
 
 void writeZFile(int step, int wi) {
@@ -456,19 +383,6 @@ void WriteEventData(int step, int wi ) {
 	writeZFile(step,wi); 
 }
 
-void writeZHist() {
-	int numBins = zHist->GetNbinsX(); 
-	for ( int i = 0; i < numBins; i++ ) {
-
-		char histVals[50]; 
-		if (zHist->GetBinContent(i) != 0) {
-			float binCenter = zHist->GetBinCenter(i); 
-			float logP = log ( zHist->GetBinContent(i) ) ; 
-			sprintf(histVals,"%f %f\n",binCenter,-logP) ; 
-			fputs(histVals,zFile) ; 
-		}
-	}
-}
 /*
 void reset() { 
 
@@ -491,10 +405,11 @@ void writeHistograms() {
 
 	for(int j = 0; j < numWindows; j++ ) {
 
-		for(int i = 1; i <= zHists[j]->GetNbinsX(); i++) {
+		for(int i = 0; i < nbins; i++) {
 
-			double binCenter = zHists[j]->GetBinCenter(i);
-			double binContent = zHists[j]->GetBinContent(i); 
+			double binLowEdge = i/(double) nbins ; 
+			double binCenter = binLowEdge + 1/(2.*nbins) ; 
+			double binContent = zHists[j][i]; 
 
 			char histVals[25]; 
 			if(binContent != 0 ) {
@@ -504,7 +419,7 @@ void writeHistograms() {
 			}
 
 		}
-		zHists[j]->Write(); 
+
 	}
 }
 
@@ -537,7 +452,6 @@ void checkNorms() {
 int cleanup() {
 	fclose(zFile); 
 	fclose(progressFile);
-	DataFile->Close();
 	return 0 ; 
 }
 
