@@ -3,12 +3,12 @@ L 					0.1
 N 					100 
 
 # simulation parameters 
-numSweeps			500000
+numSweeps			5000000
 sampleRate			40000 
 progressRate		1000000
 equilibrationTime	40000
 iseed				2048
-gaussVar 			50.0
+gaussVar 			0.4
 
 # umbrella sampling 
 numWindows 			1

@@ -32,8 +32,8 @@ import math
 # Parameters
 if len(sys.argv) == 1: exit('usage: python mbar_umbrella_sampling.py [K] ')
 K = int( sys.argv[1])                     # number of umbrellas
-N_max = 50000              # maximum number of snapshots/simulation
-val_min = 50               # min for PMF
+N_max = 400000              # maximum number of snapshots/simulation
+val_min = 70                 # min for PMF
 val_max = 100                # max for PMF
 centersf = "metadata.dat"      # file with list of brolly centers and paths to trajectory files
 n_skip = 0                  # skip the first n datapoints
@@ -74,7 +74,7 @@ for k in range(K):
     #else: print len(tokens)
 
 beta_k = 1.0/(kB*T_k)   # beta factor for the different temperatures
-DifferentTemperatures = False
+DifferentTemperatures = True
 #if (min(T_k) == max(T_k)):
 #    DifferentTemperatures = False            # if all the temperatures are the same, then we don't have to read in energies.
 # Read the simulation data
@@ -91,8 +91,7 @@ for k in range(K):
         if line[0] != '#' and line[0] != '@':
             if n >= n_skip:
                 tokens = line.split()
-                #print tokens
-                val = float(tokens[1])
+                val = float(tokens[0])
                 val_kn[k,n-n_skip] = val
                 u_kn[k,n-n_skip] = beta_k[k] * float(tokens[1])
             n += 1
@@ -117,11 +116,12 @@ for k in range(K):
     # Compute correlation times for potential energy and val
     # timeseries.  If the temperatures differ, use energies to determine samples; otherwise, use the cosine of val
 
-#'''
+
+    '''
     if (DifferentTemperatures):
         g_k[k] = timeseries.statisticalInefficiency(u_kn[k,:], u_kn[k,:])
         print "Correlation time for set %5d is %10.3f" % (k,g_k[k])
-        indices = timeseries.subsampleCorrelatedData(u_kn[k,:], fast=True, werbose=True)
+        indices = timeseries.subsampleCorrelatedData(u_kn[k,:])
     else:
         g_k[k] = timeseries.statisticalInefficiency(val_kn[k,:], val_kn[k,:])
         print "Correlation time for set %5d is %10.3f" % (k,g_k[k])
@@ -130,22 +130,20 @@ for k in range(K):
     N_k[k] = len(indices)
     u_kn[k,0:N_k[k]] = u_kn[k,indices]
     val_kn[k,0:N_k[k]] = val_kn[k,indices]
+    '''
 
    # print val_kn[k,0:N_k[k]]
-#'''
 
 
 # Set zero of u_kn -- this is arbitrary.
 u_kn -= u_kn.min()
 
-#val_min = numpy.min([numpy.min(val_kn[k,0:N_k[k]]) for k in range(K)])
-#val_max = numpy.max([numpy.max(val_kn[k,0:N_k[k]]) for k in range(K)])
+val_min = numpy.min([numpy.min(val_kn[k,0:N_k[k]]) for k in range(K)])
+val_max = numpy.max([numpy.max(val_kn[k,0:N_k[k]]) for k in range(K)])
 
 # Test bin numbers
 good_bins = []
-#binsMax = int (10*(val_max - val_min)  )
-binsMax = 100
-for tmpnbins in range(5,binsMax,10):
+for tmpnbins in range(5,200,5):
     print "Testing nbins =", tmpnbins
     delta = (val_max - val_min) / float(tmpnbins)
     # compute bin centers
@@ -207,12 +205,17 @@ for k in range(K):
 # Initialize MBAR.
 print "Running MBAR..."
 #print u_kln; quit()
-mbar = pymbar.MBAR(u_kln, N_k, verbose = True, method = 'adaptive', initialize='BAR')
+from uwham import *
+results = UWHAM(u_kln,N_k)
+fi =  results.f_k
+print fi
+quit()
+#mbar = pymbar.MBAR(u_kln, N_k, verbose = True, method = 'adaptive', initialize='BAR', relative_tolerance=1.0e-2)
 #mbar = pymbar.MBAR(u_kln, N_k, verbose = True, method = 'adaptive', initialize='BAR')
 #mbar = pymbar.MBAR(u_kln, N_k, verbose = True, method = 'Newton-Raphson')
 
 # Compute PMF in unbiased potential (in units of kT).
-(f_i, df_i) = mbar.computePMF(u_kn, bin_kn, nbins)
+#(f_i, df_i) = mbar.computePMF(u_kn, bin_kn, nbins)
 
 # Write out PMF
 print "PMF (in units of kT)"
@@ -224,6 +227,6 @@ for i in range(nbins):
 
 pKfile = open("f(N).txt", 'w')
 for i in range(nbins):
-    pKfile.write(str(bin_center_i[i]) + "\t" + str(f_i[i]) + "\t" + str(df_i[i]) + "\n")
+    pKfile.write(str(bin_center_i[i]) + "\t" + str(f_i[i]) + "\n")
 pKfile.close()
 

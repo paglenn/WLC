@@ -22,7 +22,7 @@ for f in windowFiles:
 plt.show()
 quit()
 # combine histograms?
-allZ = [np.array(z)/max(z) for z in allZ ]
+allZ = [np.array(z) for z in allZ ]
 allBC = [np.array(bc)/max(bc) for bc in allBC ]
 for j in range(1,numWindows):
     allBC[j] = allBC[j] *allBC[j-1][-1]/allBC[j][0]

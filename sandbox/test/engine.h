@@ -1,20 +1,26 @@
 #include<iostream>
 #include<cmath>
+#include<math.h>
 #include<vector>
 #include<string>
 #include<cstdlib>
 #include<random>
 #include<ctime>
+#include"VectorMethods.h"
+#include<stdio.h>
+#include<cstring>
+#include "MersenneTwister.h"
 using std::vector; 
 using std::endl; 
 using std::cout;
 using std::cerr; 
-using std::normal_distribution;
+using std::normal_distribution ; 
 
 // system parameters 
 double L,_L,ds, _ds; 
 int N; 
 vector<double> tx, ty, tz, t0x,t0y,t0z, tox,toy,toz ; 
+double tp[2], rp[2] ; 
 
 // simulation parameters 
 int numSweeps, numSteps; 
@@ -43,8 +49,11 @@ vector< vector<double> > zHists;
 vector<int> totalCounts; 
 
 const double PI = acos(-1.);
+const double sqrt2 = sqrt(2) ; 
+const int MAX = pow(2,32) -1 ; 
 int iseed ; 
-std::mt19937 generator; 
+//std::mt19937 generator; 
+MTRand generator; 
 
 void readInParameters() {
 
@@ -74,7 +83,7 @@ void readInParameters() {
 		//else std::cout<<"whoami" << str<<std::endl;
 	}
 
-	// MF correction 
+	// MF correction / rescaling
 	_L = 1./L ; 
 	L = 1./(_L + 2) ; 
 }
@@ -105,36 +114,42 @@ double getZ() {
 
 double getRP() {
 	// projection of eed vector into the plane 
-	double rpx = 0.,rpy = 0.;
-	for(int j = 0; j < N; j++) {
-		rpx += tx[j]; 
-		rpy += ty[j];
-	}
-	double rp = sqrt(rpx*rpx+rpy*rpy);
-	return rp/float(N);
+	double ans = sqrt( rp[0]*rp[0] + rp[1]*rp[1]) ; 
+	return ans/ (float) N ; 
+}
+
+double getTP() { 
+	//perpendicular component of final segment 
+    //double ans = (elem == 0) ? tx[N-1] : ty[N-1] ;
+	double ans = sqrt(tx[N-1]*tx[N-1] + ty[N-1]*ty[N-1]);
+	return ans ; 
 }
 
 double getRPTP() {
 	// innerProduct product of perpendicular component of final segment and 
 	// projection of eed vector into the plane 
+	/*
 	double rx = 0.,ry = 0.; 
-	double tpx=0.,tpy=0.;
-	tpx = tx[N-1]; tpy = ty[N-1]; 
-	for(int i = 1; i < N; i++) {
+	for(int i = 0; i < N; i++) {
 		rx += tx[i];
 		ry += ty[i];
 	}
+	*/
+	//cout << tp[0] << ":" << tx[N-1] << endl ; 
+	//cout << tp[1] << ":" << ty[N-1] << endl ; 
 
-	return (rx*tpx + ry*tpy)/ (double) N; 
+	return (rp[0]*tp[0] + rp[1]*tp[1])/ N ; 
 }
 
+
+double gaussian (double mean, double var) { 
 	
-double getTP() { 
-	//perpendicular component of final segment 
-	double tp = sqrt(tx[N-1]*tx[N-1] + ty[N-1]*ty[N-1]); 
-	return tp; 
+	double ans, u , v; 
+	u = generator.randInt()%MAX / (double) MAX ;  
+	v = generator.randInt()%MAX / (double) MAX ;
+	ans = mean + sqrt( - 2* var * log(u) ) * cos(2*PI*v) ; 
+	return ans ; 
 }
-
 
 void init() {
 
@@ -144,13 +159,12 @@ void init() {
 	ds = L/ (double) N ; 
 	_ds  = 1./ds; 
 	numSteps = numSweeps * N; 
-	cout << numSteps << endl ;
+	//cout << numSteps << endl ;
 	gaussVar *= ds; 
 	numFrames = numWindows * numPasses * numSteps ; 
 	binWidth = (1. - zstart)/nbins; 
 	binOverlap = 1 * binWidth; 
 	iseed = time(0) ; 
-	srand(iseed); 
 	generator.seed(iseed); 
 
 	zFile = fopen("uwham.dat","w");
@@ -167,6 +181,9 @@ void init() {
 	tox.assign(N,0.); 
 	toy.assign(N,0.); 
 	toz.assign(N,1.);
+	tp[0] = tp[1] = 0.0 ; 
+	rp[0] = rp[1] = 0.0 ; 
+
 	// initialize to a random configuration 
 	// don't change first ti from (0,0,1) 
 	// limit to ti > 0 at first 
@@ -174,15 +191,12 @@ void init() {
 	while ( z  < 0 ) { 	
 	for (int index = 1 ; index < N ; index++ ) { 
 
-		normal_distribution<double> gaus(0.0,1);
+		
 
-		tx[index] = gaus(generator);
-		gaus.reset(); // needed for independent rv's 
-		ty[index] = gaus(generator);
-		gaus.reset();
+		tx[index] = gaussian(0.0,1.0);
+		ty[index] = gaussian(0.0,1.0);
 		while( tz[index] <= 0. ) { 
-			tz[index] = gaus(generator);
-			gaus.reset();
+			tz[index] = gaussian(0.0,1.0) ;
 		}
 
 		normalize(index);
@@ -192,9 +206,16 @@ void init() {
 		toy[index] = ty[index]; 
 		t0z[index] = tz[index];
 		toz[index] = tz[index];
+
+		rp[0] += tx[index] ;
+		rp[1] += ty[index] ; 
+
 	}
 		z = getZ(); 
 	}
+
+	tp[0] = tx[N-1] ;
+	tp[1] = ty[N-1] ; 
 
 	RP = getRP() ; 
 	RPTP = getRPTP() ; 
@@ -246,16 +267,22 @@ void perturb(int index) {
 	toy[index] = ty[index]; 
 	toz[index] = tz[index]; 
 
-	normal_distribution<double> gaus(0.0,gaussVar);
+	tx[index] += gaussian(0.0,gaussVar);
+	 // needed for independent rv's 
+	ty[index] += gaussian(0.0,gaussVar);
+	
+	tz[index] += gaussian(0.0,gaussVar);
+	
 
-	tx[index] += gaus(generator);
-	gaus.reset(); // needed for independent rv's 
-	ty[index] += gaus(generator);
-	gaus.reset();
-	tz[index] += gaus(generator);
-	gaus.reset();
 
 	normalize(index);
+	rp[0] += (tx[index] - tox[index]) ; 
+	rp[1] += (ty[index] - toy[index]) ; 
+	
+	if (index == N-1 ) { 
+		tp[0] = tx[index] ; 
+		tp[1] = ty[index] ;
+	}
 }
 
 double innerProduct(double x1, double y1, double z1, double x2, double y2, double z2) {
@@ -289,11 +316,19 @@ double deltaE(int index, int w_index, double z_prev) {
 
 double revert(int index) {
 
+	rp[0] += (tox[index] - tx[index]) ; 
+	rp[1] += (toy[index] - ty[index]) ; 
+
 	tx[index] = tox[index]; 
 	ty[index] = toy[index]; 
 	tz[index] = toz[index]; 
 
-	return 0; 
+	if (index == N-1 ) { 
+		tp[0] = tx[index] ; 
+		tp[1] = ty[index] ;
+	}
+
+	return 0 ; 
 
 }
 
@@ -326,9 +361,137 @@ void adjustZ(int w_index) {
 
 }
 
+void rotate_T(double angle, int dim = 3) {
+	//cout << "Angle " << angle << endl ; 
+
+	vector<double> v(3,0.); 
+	v[0] = tx[N-1] ; 
+	v[1] = ty[N-1] ; 
+	v[2] = tz[N-1] ; 
+	double norm2 = tx[N-1]*tx[N-1]  + ty[N-1] *ty[N-1] ; 
+	//cout << "norm before rotation: " << norm2 << endl ; 
+//	cout <<"v: "<<  v[0] << " " << v[1] << endl;
+
+	//if (dim == 3) v = rotate_phi(v,angle) ;
+	v = rotate_2D(v,angle) ; 
+
+	//update RP 
+//	cout <<"Before: "<<  rp[0] << " " << rp[1] << endl; 
+	rp[0] += (v[0] - tx[N-1]) ; 
+	rp[1] += (v[1] - ty[N-1]) ; 
+//	cout <<"v: "<<  v[0] << " " << v[1] << endl;
+//	cout <<"After: "<<  rp[0] << " " << rp[1] << endl; 
+
+	tx[N-1]  = v[0] ; 
+	ty[N-1]  = v[1] ; 
+	tz[N-1]  = v[2] ; 
+	norm2 = tx[N-1]*tx[N-1]  + ty[N-1] *ty[N-1] ; 
+	//cout << "norm after rotation: " << norm2 << endl ; 
+
+	tp[0] = tx[N-1] ; 
+	tp[1] = ty[N-1] ; 
+
+}
+
+void alignRPTP(double target) {
+	if (rp[0] == 0 ) return ; 
+	double K = getTP() ; 
+	double theta_0 = atan(rp[1]/rp[0]) ; 
+	cout << "init theta "<< theta_0 << endl ; 
+	double theta_t = acos(target / (getRP()*getTP() )) ; 
+	cout << " rp*tp " << getRP() * getTP() << endl; 
+	cout << "target " << target << endl ; 
+
+	cout << "target_theta: "<< theta_t << endl ; 
+	tp[0] = K  * cos(theta_0+ theta_t) ; 
+	tp[1] = K * sin(theta_0+theta_t)  ; 
+	//double tpx = tp[0] ; double tpy = tp[1] ; 
+	double norm = sqrt( (rp[0]*rp[0] + rp[1] * rp[1]) * ( tp[0]*tp[0] + tp[1]*tp[1]) ) ;
+	cout << " norm before: " << norm << endl ; 
+	if (norm < 1e-6)  return; 
+	else { 
+		double theta_curr = acos( (rp[0]*tp[0] + rp[1]*tp[1]) / norm )  ;
+		double theta_target  = acos(target / norm ) ; 
+		cout << "target_theta: "<< theta_target << endl ; 
+		double dtheta = theta_target - theta_curr ; 
+		if (dtheta > 0 ) {
+			//rotate_T( dtheta, 2 ) ; 
+		} else { 
+			//rotate_T( -dtheta, 2 ) ;
+		}
+
+		// check to see if the right vector was rotated 
+		//norm = sqrt( (rp[0]*rp[0] + rp[1] * rp[1]) * ( tp[0]*tp[0] + tp[1]*tp[1]) ) ;
+		double theta_new = acos( (rp[0]*tp[0] + rp[1]*tp[1]) / norm )  ;
+		cout << "new theta (1)" << theta_new  << endl ;  
+		/*
+		if (fabs(theta_new - theta_target) > fabs(dtheta)) {
+			rotate_T(-2*dtheta, 2) ; 
+		}
+		*/
+		//cout << "new theta (2)" << acos( (rp[0]*tp[0] + rp[1]*tp[1]) / norm)  << endl ;  
+		cout << "rptp " <<  (rp[0]*tp[0] + rp[1]*tp[1]) << endl ; 
+		//cout << tx[N-1] << " " << tp[0] << endl ; 
+		//cout << ty[N-1] << " " << tp[1] << endl ; 
+		//cout << " norm after: " << norm << endl ; 
+	}
+}
+
+void adjustRP(double target) {
+	
+	double tol = 1./(2*N);
+	double myRP = getRP() ; 
+
+	while(fabs(myRP- target) > tol) {
+
+		random_index = 1+rand()%(N-2) ; 
+		perturb(random_index); 
+		double rp_new = getRP(); 
+		double dRP = rp_new - myRP; 
+
+		if(myRP > target & dRP > 0 ) dRP = revert(random_index); 
+		if(myRP < target & dRP < 0 ) dRP = revert(random_index); 
+
+		if(dRP!=0) myRP = rp_new; 
+	}
+
+}
+
+void adjustTP(double target) {
+
+	double tp_ip = target/sqrt(2); 
+	double t_z =  sqrt(1. - target*target)  ; 
+	tp[0] = tp_ip  ; 
+	tp[1] = tp_ip  ; 
+
+	rp[0] += (tp[0] - tx[N-1] ) ; 
+	rp[1] += (tp[1] - ty[N-1] ) ; 
+
+	tx[N-1] = tp[0] ; 
+	ty[N-1] = tp[1] ; 
+	tz[N-1] = t_z ; 
+	cout << "t:" << tx[N-1] << " " << ty[N-1] << " " << tz[N-1] << endl ;
+}
+
+
+void set_zero() {
+
+	for(int index = 0 ; index < N ; index++) { 
+		
+		t0x[index] = tx[index]; 
+		tox[index] = tx[index];
+		t0y[index] = ty[index]; 
+		toy[index] = ty[index]; 
+		t0z[index] = tz[index];
+		toz[index] = tz[index];
+	
+	}
+
+	
+}
 
 // monte carlo move and acceptance/rejection criteria 
-bool mc_step(int w_index = numWindows-1) {
+bool umbrella_mc_step(int w_index = numWindows-1) {
 
 	double z_prev = getZ() ; 
 	random_index = 1 + rand() % (N-1); // random int (1,N-1)  
@@ -338,14 +501,12 @@ bool mc_step(int w_index = numWindows-1) {
 	double dE = deltaE(random_index, w_index, z_prev ); 
 
 	// keeping RP, TP, RPTP constant here 
-	// possible PROBLEM but maybe a necessary one, since sampling still happens. 
-	/*
+	// possible PROBLEM but maybe not. sampling still happens. 
 	if (diff(RP,getRP()) || diff(TP,getTP()) || diff(RPTP,getRPTP()) ) {
 			revert(random_index) ; 
 			return false; 
 	
 	}
-	*/
 
 	// Metropolis part 
 	if(dE <= 0.) return true; 
