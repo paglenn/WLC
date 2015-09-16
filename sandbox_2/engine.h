@@ -402,8 +402,8 @@ void alignRPTP(double target) {
 	else { 
 		double TP_norm = getTP() ; 
 		double theta_0 = atan(rp[1]/rp[0] ) ; 
-		// to account for difference in range of atan and acos 
 		if (rp[0] < 0 or ( rp[1] < 0 and rp[0]*rp[1] > 0) ) theta_0 += PI ; 
+		double real_target = target ; 		
 		if (target > getRP() * getTP() ) { 
 			cout << " invalid value of R.T" << endl ; 
 			cout << " setting to " << norm - eps << endl ; 
