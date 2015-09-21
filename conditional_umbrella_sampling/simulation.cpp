@@ -2,71 +2,80 @@
 #include<vector>
 #include<ctime>
 using std::cout ;
+using std::endl  ;
 
-int main() {
+int main(int argc, char* argv[]) {
 
-	int num_conditional_bins = 10; 
+	//cout << "Hi there " << endl ; 
+	if (argc < 4 ) { 
+		cerr << "usage: ./wlc RP TP RPTP " << endl ; 
+		return 0 ; 
+	}
+
 	int start_time = time(0); 
-	init(num_conditional_bins); 
-	double pct_acc = 0; 
-	int numWindows = nw; 
-		
-	// modulate RP
-	for (int r = 0; r < num_conditional_bins; r++ ) { 
-		
-		target = (r+0.5) / num_conditional_bins; 
-		adjustRP( target) ; 
-		
-		// modulate TP 
-		for(int t = 0; t <  num_conditional_bins; t++ ) { 
+	double rp_in = atof( argv[1]) ; 
+	double tp_in = atof(argv[2]) ; 
+	double rptp_in = atof(argv[3]) ; 
 
-			adjustTP((t+0.5)/ num_conditional_bins) ; 	
 
-			// Modulate RPTP 
-			for( int rt = 0; rt < num_conditional_bins; rt++) { 	
-
-				align(( rt+0.5) / num_conditional_bins) ; 
-				// note: we'll have to make sure to preserve this orientation when adjusting RP. 
+	init(); 
+	adjustTP(tp_in) ; 
+	adjustRP(rp_in) ; 
 	
+	char progress[75] ; 
+	alignRPTP(rptp_in) ;
 
-				for(int wi = 0; wi < numWindows; wi ++ ) {
-					reset(); 
+	double pct_acc = 0; 
+	sprintf(progress, "RP = %g \t TP = %g \t RPTP = %g ", getRP(),getTP(),getRPTP() ) ; 
+	fputs(progress,progressFile) ;
 
-					adjustZ(wi); 
 
-						for(int j = 0; j < numSweeps; j++) { 
+	for(int wi = 0; wi < numWindows; wi ++ ) {
 
-							for(int k = 0; k < N; k++ ) { 
+		for(int wpass = 0; wpass < numPasses; wpass ++) {
 
-								int acc = umbrella_mc_step(wi,target ); 
-								pct_acc += acc / float(N) ; 
-								
-							}
-							
-						if(j > equilibrationTime and j%sampleRate == 0  ) WriteEventData(j,wi, r , t, rt);	
-							
-						// Write progress report 
-						if(j%progressRate == 0 ) { 
-							char progress[50]; 
-							sprintf(progress,"bins %d %d %d;  window %d/%dsweep %g/%g \n",r, t, rt ,wi, numWindows, (float) j , (float) numSweeps);
-							fputs(progress,progressFile);
-						}
 
-					} // end simulation 
+			if( numWindows > 1 ) {
+				int max_reached = adjustZ(wi); 
+				set_zero() ; 
+				if ( max_reached) {
+					wi = numWindows; 
+					wpass = numPasses; 
+					break ; 
+				}
+			}
 
-				}	// end window 
+			for(int j = 0; j < numSteps; j++) { 
 
-			} // end rptp 
 
-		} // end tp 
+				int acc = umbrella_mc_step(wi); 
+				pct_acc += acc / float(numFrames) ; 
+				
+				
+				if(j > equilibrationTime and j%sampleRate == 0  ) WriteEventData(j,wi);	
+				
+				
+				// Write progress report 
+				if(j%progressRate == 0 ) { 
+					
+					sprintf(progress,"window %d/%d\tpass %g/%g\tstep %g/%g\n",wi+1,numWindows,(float) wpass+1,(float) numPasses,(float) j , (float) numSteps);
+					fputs(progress,progressFile);
+				}
+			checkNorms(); 
 
-	} // end rp  
-	pct_acc /= (numSweeps * numWindows * nb * nb * nb ); 
+			} // end simulation 
+		
+		} // end pass 
+
+	}	// end window 
 
 
 	// write statistics and close up 
 	writeHistograms();
 	write_metadata(); 
+	
+	sprintf(progress, "Z = %g \t RP = %g \t TP = %g \t RPTP = %g ", getZ() ,getRP(),getTP(),getRPTP() ) ; 
+	fputs(progress,progressFile) ;
 
 	char summary[70];
 	int end_time = time(0); 

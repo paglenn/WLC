@@ -85,9 +85,13 @@ vector<double> rotate_2D(vector<double> v, double phi ) {
 	vector<double>  vprime(3, 0.) ; 
 	double vx, vy ; 
 	vx = v[0] ; vy = v[1] ; 
-	vprime[0] = vx * cos(phi) + vy * sin(phi) ; 
-	vprime[1] = -vx * sin(phi) + vy * cos(phi) ; 
+	//std::cout << "Rotation: " << std::endl ; 
+	//std::cout << "angle " << phi << std::endl ; 
+	//std::cout << vx << " " << vy << std::endl ; 
+	vprime[0] = vx * cos(phi) - vy * sin(phi) ; 
+	vprime[1] = vx * sin(phi) + vy * cos(phi) ; 
 	vprime[2] = v[2] ; 
+	//std::cout << vprime[0] << " " << vprime[1] << std::endl ; 
 	return vprime ; 
 
 }
