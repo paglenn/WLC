@@ -1,0 +1,12 @@
+RP = 3.54902e-06 	 TP = 0.0934866 	 RPTP = 7.90411e-08 step 0/1.5e+06
+step 150000/1.5e+06
+step 300000/1.5e+06
+step 450000/1.5e+06
+step 600000/1.5e+06
+step 750000/1.5e+06
+step 900000/1.5e+06
+step 1.05e+06/1.5e+06
+step 1.2e+06/1.5e+06
+step 1.35e+06/1.5e+06
+Z = 0.998497 	 RP = 0.0171273 	 TP = 0.0680076 	 RPTP = -0.000508756 46.95% steps accepted
+running time: 1.10 minutes
