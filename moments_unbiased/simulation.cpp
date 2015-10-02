@@ -23,13 +23,13 @@ int main(int argc, char* argv[]) {
 
 
 	init(); 
-	adjustTP(tp_in) ; 
-	adjustRP(rp_in) ; 
+	//adjustTP(tp_in) ; 
+	//adjustRP(rp_in) ; 
 	//cout << numSweeps << endl ;  
 	//return 0 ; 
 	
 	char progress[75] ; 
-	alignRPTP(rptp_in) ;
+	//alignRPTP(rptp_in) ;
 
 	double pct_acc = 0; 
 	sprintf(progress, "RP = %g \t TP = %g \t RPTP = %g ", getRP(),getTP(),getRPTP() ) ; 

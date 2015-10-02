@@ -461,6 +461,8 @@ void GoldstoneModes() {
 		fout << setw(12) << dt2; 
 		fout << endl ; 
 	}
+
+	fout.close(); 
 }
 		
 
