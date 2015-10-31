@@ -29,6 +29,7 @@ double urn;
 long double norm2; 
 long double snorm2, _snorm2;
 double zmax ; 
+double z_mp ;
 
 // simulation parameters 
 int numSweeps, numSteps; 
@@ -198,7 +199,7 @@ double getRP() {
 	}
 
 	rpf = sqrt(sx*sx + sy*sy ) ;
-	return rpf / (double ) N ; 
+	return rpf * _N ; 
 }
 
 double getTP() { 
@@ -335,7 +336,7 @@ double getE()  {
 	for ( int i = 0; i+1 < N; i++) {
 		E -= innerProduct(tx[i],ty[i],tz[i],tx[i+1],ty[i+1],tz[i+1]); 
 	}
-	return _ds*E ; 
+	return E ; 
 }
 
 
@@ -477,8 +478,10 @@ void GoldstoneModes() {
 void alignRPTP(double target) {
 	// target is mapped to an angle between 0 and PI 
 	//double tpx = tp[0] ; double tpy = tp[1] ; 
-	double norm = sqrt( (rp[0]*rp[0] + rp[1] * rp[1]) * ( tp[0]*tp[0] + tp[1]*tp[1]) ) *_N  ;
+	double norm = RP * TP   ; 
 	double theta_0 ; 
+	cout << "RP before: " << RP << " : " << getRP() << endl ;
+	cout << "TP: " << TP << ":" << getTP() << endl ;
 	if (norm < eps)  return; 
 	else { 
 		if (rp[0] != 0.0 ) {
@@ -493,15 +496,14 @@ void alignRPTP(double target) {
 		double theta_t = PI * target ;
 		tp[0] = TP * cos(theta_0 + theta_t) ; 
 		tp[1] = TP * sin(theta_0 + theta_t)  ; 	
-		//cout << tp[0]*tp[0] + tp[1]*tp[1] << endl ; 
-		//cout << TP*TP << endl; 
+		rp[0] += tp[0] - TP / sqrt2 ; 
+		rp[1] += tp[1] - TP / sqrt2 ; 
 		tx[N-1] = tp[0] ; 
 		ty[N-1] = tp[1] ;
-		RPTP = getRPTP() ; 
-		//cout << TP << ": " << getTP() << endl ;
-		cout << RP << ": " << getRP() << endl ;
-		assert(!diff(RP,getRP())); ; 
-		assert(!diff(TP,getTP())); ; 
+		// this changes RP a little bit 
+		RP = getRP() ;
+
+
 	}
 }
 
@@ -530,7 +532,6 @@ void adjustRP(double target) {
 	RP = getRP() ; 
 	zmax = sqrt( 1 - RP*RP) ;  
 	//cout << "target: " << target << endl ; 
-	//cout <<"RP: " << getRP() << endl ; 
 	checkNorms(); 
 
 }
@@ -550,7 +551,7 @@ void adjustTP(double target) {
 	tz[N-1] = t_z ; 
 
 	TP = getTP() ;
-	cout << TP << " (actual):(tgt) " << target << endl ;
+	//cout << TP << " (actual):(tgt) " << target << endl ;
 }
 
 
@@ -813,7 +814,7 @@ void WriteEventData(int step) {
 	//writeCoordinates() ; 
 }
 
-void writeHistograms() {
+void writeHistograms(int wi = 0 ) {
 
 	writeZMoments() ;
 	double P, binContent;
@@ -821,11 +822,16 @@ void writeHistograms() {
 
 	double TC = totalCounts ; 
 
+	double maxP = 0.0  ;
 	for(int i = 0; i < nbins; i++) {
 		double binLowEdge = i/(double) nbins ; 
 		double binCenter = binLowEdge + 1/(2.*nbins) ; 
-		binContent = zHists[0][i]; 
+		binContent = zHists[wi][i]; 
 		P = binContent / TC ; 
+		if (P > maxP ) {
+			maxP = P ; 
+			z_mp = binCenter ; 
+		}
 
 		char histVals[25]; 
 		if(binContent >100 ) {
@@ -858,6 +864,7 @@ void writeLogFile() {
 	fout << "TP " << setw(15) << TP << endl ; 
 	fout << "RPTP " << setw(15) << RPTP << endl ; 
 	fout << "zmax " << setw(15) << zmax << endl ; 
+	fout << "Zmp " << setw(15) << z_mp << endl; 
 	fout.close() ; 
 	fout.clear() ; 
 }

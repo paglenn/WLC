@@ -74,8 +74,8 @@ int main(int argc, char* argv[]) {
 	// write statistics and close up 
 	writeHistograms();
 	write_metadata(); 
-	writeLogFile(); 
-	//GoldstoneModes() ;
+	writeLogFile();  // REQ: write this after hist file 
+	//GoldstoneModes() ; // useless but interesting theoretically 
 	
 	sprintf(progress, "Z = %g \t RP = %g \t TP = %g \t RPTP = %g ", getZ() ,getRP(),getTP(),getRPTP() ) ; 
 	fputs(progress,progressFile) ;
@@ -87,7 +87,7 @@ int main(int argc, char* argv[]) {
 	sprintf(summary,"%.2f%% steps accepted\nrunning time: %.2f minutes\n",100*(pct_acc),tdiff);
 	fputs(summary,progressFile); 
 
-	sprintf(summary,"zmax: %.2f",zmax ) ; 
+	sprintf(summary,"zmax: %.2f", z_mp ) ; 
 
 	ferr.close();
 	return cleanup(); 
