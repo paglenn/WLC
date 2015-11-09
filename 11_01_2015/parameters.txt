@@ -18,4 +18,4 @@ zstart 				0.5
 bias				0.0
 
 # extras 
-nbins 				1000 
+nbins 				5000 
